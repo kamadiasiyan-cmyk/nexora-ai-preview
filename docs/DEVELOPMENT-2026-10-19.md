@@ -5,3 +5,5 @@ Development focus: browser-local data backups, CSV export, light-theme consisten
 Public GitHub Pages is a static demonstration only. Never include API keys or customer records in the public repository. A production backend must handle authentication, tenant isolation, API credentials, and human approval before outbound AI actions.
 
 Planned checks: JSON backup validation, spreadsheet-safe CSV exports, responsive layout, and browser smoke tests.
+
+Status: data-tools implementation has passed isolated JavaScript syntax and validation checks, but publishing executable code is currently blocked by connector safety checks. No new UI is live yet.
