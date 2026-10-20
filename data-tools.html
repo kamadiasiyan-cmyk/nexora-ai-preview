@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f5f7fc"><title>NEXORA AI | Data Tools</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,sans-serif;color:#18243a;background:#f5f7fc}*{box-sizing:border-box}body{margin:0}.wrap{max-width:960px;margin:0 auto;padding:36px 20px}header{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}.brand{font-size:23px;font-weight:850;letter-spacing:.05em}.brand span{color:#6554d9}.card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:26px;margin-top:22px;box-shadow:0 5px 24px #1e325a0a}.muted{color:#64748b;line-height:1.6}.btn{border:1px solid #cbd5e1;background:#fff;color:#263650;padding:11px 16px;border-radius:10px;cursor:pointer;font-weight:650;text-decoration:none;display:inline-block}.btn.primary{background:#6554d9;border-color:#6554d9;color:#fff}.actions{display:flex;gap:10px;flex-wrap:wrap}.warn{background:#fff8e8;border:1px solid #f0dba9;padding:14px;border-radius:10px}.status{min-height:26px;font-weight:650;color:#5644cb}input[type=file]{max-width:100%}@media(max-width:600px){.wrap{padding:20px 12px}.card{padding:18px}}
+</style></head><body><div class="wrap"><header><div class="brand">NEXORA <span>AI</span><div class="muted">Data tools · Browser-only demo</div></div><a class="btn" href="./">← Back to dashboard</a></header>
+<section class="card"><h1>Backup &amp; exports</h1><p class="muted">Download a JSON backup of your browser-local demo workspace, export inventory or sales as CSV, or restore a prior backup. No data is sent to a server.</p><p class="warn">Public development preview. Do not enter real customer or sensitive business data. Restoring replaces the local workspace in this browser.</p><div class="actions"><button class="btn primary" id="backup">Download JSON backup</button><button class="btn" id="inventory">Inventory CSV</button><button class="btn" id="sales">Sales CSV</button></div></section>
+<section class="card"><h2>Restore workspace</h2><p class="muted">Choose a NEXORA JSON backup (up to 2 MB). The file is validated before any data is replaced.</p><input type="file" id="restore" accept=".json,application/json"><p class="status" id="status" role="status" aria-live="polite"></p></section></div>
+<script>
+(()=>{'use strict';
+const KEY='nexora-preview-v1',el=id=>document.getElementById(id),status=s=>el('status').textContent=s;
+const read=()=>{try{return JSON.parse(localStorage.getItem(KEY))}catch{return null}};
+const text=(v,max=10000)=>typeof v==='string'&&v.length<=max;
+const whole=v=>Number.isSafeInteger(v)&&v>=0;
+const money=v=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
+function validate(data){
+ if(!data||typeof data!=='object'||Array.isArray(data))throw Error('Invalid backup');
+ for(const key of ['products','customers','sales','campaigns','automations'])if(!Array.isArray(data[key])||data[key].length>10000)throw Error('Invalid '+key);
+ if(data.automations.length)throw Error('Automation records are not supported');
+ if(!data.settings||!text(data.settings.name,500)||!text(data.settings.industry,100))throw Error('Invalid business settings');
+ const unique=(items,key)=>{const seen=new Set();for(const item of items){const v=item[key].toLowerCase();if(seen.has(v))throw Error('Duplicate '+key);seen.add(v)}};
+ const products=data.products.map(p=>{if(!p||!text(p.id,100)||!text(p.name,500)||!text(p.sku,100)||!money(p.price)||!whole(p.stock)||!whole(p.reorder))throw Error('Invalid product');return {id:p.id,name:p.name,sku:p.sku,price:p.price,stock:p.stock,reorder:p.reorder}});
+ unique(products,'id');unique(products,'sku');
+ const customers=data.customers.map(c=>{if(!c||!text(c.id,100)||!text(c.name,500)||!text(c.email,500)||!text(c.phone??'',100))throw Error('Invalid customer');return {id:c.id,name:c.name,email:c.email,phone:c.phone??''}});
+ unique(customers,'id');unique(customers,'email');
+ const sales=data.sales.map(s=>{if(!s||!text(s.id,100)||!text(s.date,30)||!text(s.productName,500)||!whole(s.quantity)||!money(s.total)||!(s.productId==null||text(s.productId,100))||!(s.customerId==null||text(s.customerId,100)))throw Error('Invalid sale');return {id:s.id,date:s.date,productName:s.productName,quantity:s.quantity,total:s.total,...(s.productId==null?{}:{productId:s.productId}),...(s.customerId==null?{}:{customerId:s.customerId})}});
+ unique(sales,'id');
+ const campaigns=data.campaigns.map(c=>{if(!c||!text(c.id,100)||!text(c.title,500)||!text(c.body,10000)||!text(c.date,100))throw Error('Invalid campaign');return {id:c.id,title:c.title,body:c.body,date:c.date}});
+ unique(campaigns,'id');
+ return {products,customers,sales,campaigns,automations:[],settings:{name:data.settings.name,industry:data.settings.industry}};
+}
+function download(name,content,type){const url=URL.createObjectURL(new Blob([content],{type})),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000)}
+const cell=v=>{let s=String(v??'');if(/^[\s\u0000-\u001f]*[=+@-]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'};
+const csv=(headers,rows)=>[headers,...rows].map(row=>row.map(cell).join(',')).join('\r\n')+'\r\n';
+el('backup').onclick=()=>{const data=read();if(!data)return status('No workspace data to export');download('nexora-workspace.json',JSON.stringify(data,null,2),'application/json');status('JSON backup downloaded')};
+el('inventory').onclick=()=>{const data=read();if(!data||!Array.isArray(data.products))return status('No inventory to export');download('nexora-inventory.csv',csv(['SKU','Product','Price','Stock','Reorder point'],data.products.map(p=>[p.sku,p.name,p.price,p.stock,p.reorder])),'text/csv;charset=utf-8');status('Inventory CSV downloaded')};
+el('sales').onclick=()=>{const data=read();if(!data||!Array.isArray(data.sales))return status('No sales to export');download('nexora-sales.csv',csv(['Date','Product','Customer','Quantity','Total'],data.sales.map(s=>{const c=(data.customers||[]).find(c=>c.id===s.customerId);return [s.date,s.productName,c?c.name:'Walk-in / Unassigned',s.quantity,s.total]})),'text/csv;charset=utf-8');status('Sales CSV downloaded')};
+el('restore').onchange=async e=>{const input=e.target,file=input.files?.[0];if(!file)return;try{if(file.size>2097152)throw Error('File exceeds 2 MB');const data=validate(JSON.parse(await file.text()));if(!confirm('Replace all NEXORA demo data in this browser with the selected backup?'))return;localStorage.setItem(KEY,JSON.stringify(data));status('Backup restored. Return to the dashboard to see your data.')}catch(err){status('Restore failed: '+err.message)}finally{input.value=''}};
+})();
+</script></body></html>
