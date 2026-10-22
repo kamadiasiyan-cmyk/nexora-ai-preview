@@ -1,0 +1,17 @@
+'use strict';
+(function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;else root.WatchTowerCore=api;})(typeof globalThis!=='undefined'?globalThis:this,function(){
+  const MAX_ITEMS=500,MAX_HISTORY=40;
+  function price(value){if(value===null||value===undefined||typeof value==='boolean'||String(value).trim()==='')return null;const n=Number(value);return Number.isFinite(n)&&n>=0&&n<=1e9?n:null}
+  function safeUrl(value){try{const u=new URL(value);return u.protocol==='https:'&&!u.username&&!u.password?u.href:''}catch{return ''}}
+  function item(raw){if(!raw||typeof raw!=='object')return null;const title=String(raw.title||'').trim().slice(0,250);if(!title)return null;return {title,merchant:String(raw.merchant||'Saved search').slice(0,90),query:String(raw.query||title).slice(0,140),url:safeUrl(raw.url),price:price(raw.price),currency:'USD',target:price(raw.target),lastChecked:typeof raw.lastChecked==='string'?raw.lastChecked.slice(0,40):''}}
+  function key(raw){return (safeUrl(raw.url)||String(raw.merchant||'')+'|'+String(raw.title||'')).toLowerCase()}
+  function normalizeItems(input){const seen=new Set(),out=[];for(const raw of Array.isArray(input)?input:[]){const v=item(raw);if(!v)continue;const id=key(v);if(seen.has(id))continue;seen.add(id);out.push(v);if(out.length>=MAX_ITEMS)break}return out}
+  function append(history,id,value,date){const p=price(value);if(p===null||!id||['__proto__','prototype','constructor'].includes(id))return history;const source=Array.isArray(history?.[id])?history[id]:[];const series=source.filter(x=>x&&price(x.price)!==null&&typeof x.at==='string').slice(-MAX_HISTORY+1);const at=typeof date==='string'?date:new Date().toISOString();if(series.length&&series[series.length-1].price===p&&series[series.length-1].at.slice(0,10)===at.slice(0,10))return history;return {...history,[id]:[...series,{at,price:p}]}}
+  function match(saved,offers){const id=safeUrl(saved.url);if(!id||!Array.isArray(offers))return null;const offer=offers.find(o=>safeUrl(o?.url)===id&&price(o?.price)!==null);return offer||null}
+  function stats(items,history){let below=0,observations=0;for(const it of items){if(it.target!==null&&it.price!==null&&it.price<=it.target)below++;observations+=Array.isArray(history?.[key(it)])?history[key(it)].length:0}return {count:items.length,below,observations}}
+  function sortItems(items,sort='name'){const out=normalizeItems(items);if(sort==='price')return out.sort((a,b)=>(a.price??Infinity)-(b.price??Infinity));if(sort==='target')return out.sort((a,b)=>Number(b.target!==null&&b.price!==null&&b.price<=b.target)-Number(a.target!==null&&a.price!==null&&a.price<=a.target));return out.sort((a,b)=>a.title.localeCompare(b.title))}
+  function filterItems(items,query){const q=String(query||'').trim().toLowerCase();return normalizeItems(items).filter(x=>!q||(x.title+' '+x.merchant).toLowerCase().includes(q))}
+  function csvCell(value){let s=String(value??'');if(/^[\s]*[=+@-]/.test(s)||/^[\t\r]/.test(s))s="'"+s;return '"'+s.replace(/"/g,'""')+'"'}
+  function merge(current,incoming){return normalizeItems([...normalizeItems(current),...normalizeItems(incoming)])}
+  return {MAX_ITEMS,MAX_HISTORY,price,safeUrl,item,key,normalizeItems,append,match,stats,merge,sortItems,filterItems,csvCell};
+});
