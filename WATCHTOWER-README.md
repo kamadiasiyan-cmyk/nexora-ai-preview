@@ -23,3 +23,7 @@ For products: `GET /api/search?q=running%20shoes&mode=products` returns `{query,
 - Product cards represent results supplied by the connected provider. Verify price and stock on the seller's site.
 - API is an MVP: add persistent rate limits, authentication, usage quotas, monitoring, error reporting, and abuse prevention before commercial deployment.
 - Previous NEXORA demo files are still in this repository; the homepage was replaced but other pages were not deleted. The private NEXORA repository was not modified.
+
+## Local API checks
+
+Run `node --check shopping-api/server.js` for syntax verification. Run `npm test --prefix shopping-api` after adding test files. This does not verify a live SearchApi.io connection or deployment.
