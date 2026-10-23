@@ -5,7 +5,7 @@ const storage=(items={},broken=false)=>({getItem:k=>broken?'broken json':items[k
 test('retains the existing browser storage key',()=>assert.equal(w.WATCH_KEY,'watchtower-watchlist-v1'));
 test('loads valid existing products without altering custom fields',()=>{
  const saved=[{title:'Laptop',url:'https://shop.example/p',price:100,custom:'keep'},{title:''},{title:'Bad',url:'javascript:alert(1)'}];
- const out=w.loadItems(storage({[w.WATCH_KEY]:JSON.stringify(saved)}));assert.equal(out.length,1);assert.equal(out[0].custom,'keep');
+ const out=w.loadItems(storage({[w.WATCH_KEY]:JSON.stringify(saved)}));assert.equal(out.length,2);assert.equal(out[0].custom,'keep');assert.equal(out[1].title,'Bad');assert.equal(out[1].url,undefined);
 });
 test('corrupt browser storage is handled safely',()=>{assert.deepEqual(w.loadItems(storage({},true)),[]);assert.equal(Object.keys(w.loadHistory(storage({},true))).length,0)});
 test('rejects unsafe links and embedded credentials',()=>{assert.equal(w.safeUrl('javascript:alert(1)'),null);assert.equal(w.safeUrl('https://user:pass@shop.example/p'),null);assert.ok(w.safeUrl('https://shop.example/p'))});
@@ -43,4 +43,10 @@ test('import merges history without erasing earlier observations',()=>{
 test('rejects invalid observation amounts',()=>{
  assert.throws(()=>w.observe({}, {title:'A'},NaN,null),/Invalid observation/);
  assert.throws(()=>w.observe({}, {title:'A'},-1,null),/Invalid observation/);
+});
+test('tracking parameters do not break exact product matching',()=>{
+ const a=w.safeUrl('https://shop.example/p?sku=7&utm_source=ads&gclid=123#details');
+ const b=w.safeUrl('https://shop.example/p?sku=7');
+ assert.equal(a,b);
+ assert.equal(w.keyFor({title:'A',url:a}),w.keyFor({title:'B',url:b}));
 });
