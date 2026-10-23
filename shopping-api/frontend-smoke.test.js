@@ -17,7 +17,8 @@ test('search controls and accessible price comparison summary exist once', () =>
   assert.match(html, /id="priceRange"[^>]*aria-live="polite"/);
 });
 test('frontend retains browser-only watchlist and never embeds server credentials', () => {
-  assert.match(html,/watchtower-watchlist-v1/);
+  const utils = fs.readFileSync(path.join(__dirname, '..', 'watchlist-utils.js'), 'utf8');
+  assert.match(utils,/watchtower-watchlist-v1/);
   assert.match(html,/watchtower-api-url-v1/);
   assert.doesNotMatch(html, /SEARCHAPI_KEY\s*=/);
 });
