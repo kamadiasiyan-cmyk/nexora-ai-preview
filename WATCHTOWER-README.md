@@ -12,7 +12,11 @@ The included Node.js API server uses SearchApi.io's Google Shopping results to r
 4. Set `PORT` if your host requires it; start with `node shopping-api/server.js`.
 5. In the WatchTower website's **Live product search connection** section, enter your backend's HTTPS origin, then select Products or Websites and run a search.
 
-For products: `GET /api/search?q=running%20shoes&mode=products` returns `{query,mode,offers:[{title,merchant,price,currency,url,shipping,inStock}],results:[]}`. The `inStock` field is `true`, `false`, or `null` (unknown); unknown is **not** proof of availability.\n\nFor websites: `GET /api/search?q=shoe%20reviews&mode=web` returns `{query,mode,offers:[],results:[{title,url,snippet,domain}]}`.\n\nPrevious example: `GET /api/search?q=running%20shoes` returns `{query,offers:[{title,merchant,price,currency,url,shipping}]}`.
+For products: `GET /api/search?q=running%20shoes&mode=products` returns `{query,mode,offers:[{title,merchant,price,currency,url,shipping,inStock}],results:[],comparison,cached}`. `comparison` summarizes valid offers with counts of distinct retailers and known/unknown stock, lowest/highest/median prices, and the lowest **confirmed** in-stock price. These are descriptive statistics, **not** a like-for-like comparison. The `inStock` field is `true`, `false`, or `null` (unknown); unknown is **not** proof of availability.
+
+For websites: `GET /api/search?q=shoe%20reviews&mode=web` returns `{query,mode,offers:[],results:[{title,url,snippet,domain}],comparison:null,cached}`.
+
+Previous example: `GET /api/search?q=running%20shoes` returns `{query,offers:[{title,merchant,price,currency,url,shipping}]}`.
 
 ### Important
 
@@ -28,6 +32,7 @@ For products: `GET /api/search?q=running%20shoes&mode=products` returns `{query,
 
 - The shopping API now rejects malformed prices, non-HTTPS retailer links, credential-bearing URLs, and unsupported search modes. It removes common tracking parameters before deduplicating results. Price comparisons are only as current as SearchApi.io's response.
 - The API bounds simultaneous provider requests to eight and reuses in-flight identical searches; results are cached in server memory for five minutes. Provider error details are not returned to browsers.
+- The homepage shows the **visible filtered price range** with a caveat about differing product models, conditions, and shipping; the summary changes with price and stock filters.
 - The homepage includes an **In stock only** filter (requires explicit stock confirmation), a maximum-price filter, and **Save search**. Saved website searches reopen in website mode. Existing browser-local watchlist data remains in `watchtower-watchlist-v1`.
 - Run local tests with `cd shopping-api && npm test` (Node 20+). Tests use mocked provider responses, not live API credentials.
 - The static GitHub Pages site does **not** perform automatic price checks, price history collection, closed-browser notifications, or background restock monitoring. A separately deployed backend and durable storage are required for those capabilities.
