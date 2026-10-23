@@ -21,3 +21,22 @@ test('frontend retains browser-only watchlist and never embeds server credential
   assert.match(html,/watchtower-api-url-v1/);
   assert.doesNotMatch(html, /SEARCHAPI_KEY\s*=/);
 });
+
+test('watchlist controls, target editor and backup actions are present', () => {
+  for(const id of ['exportWatch','importWatch','importWatchFile','watchStats']) {
+    assert.equal([...html.matchAll(new RegExp('id="'+id+'"','g'))].length,1,id+' must be unique');
+  }
+  assert.match(html, /<script src="watchlist-utils\.js"><\/script>/);
+  assert.match(html, /data-target/);
+  assert.match(html, /data-check/);
+});
+test('manual checks match exact saved product URLs and preserve unmatched prices', () => {
+  assert.match(html, /W\.safeUrl\(x\.url\)===url/);
+  assert.match(html, /No exact product URL match returned/);
+  assert.match(html, /Manual checks only; no background monitoring/);
+});
+test('backup import has a file size limit and preserves existing items', () => {
+  assert.match(html, /file\.size>2000000/);
+  assert.match(html, /W\.mergeItems\(saved,data\.items\)/);
+  assert.match(html, /W\.mergeHistory\(history,data\.history\)/);
+});
