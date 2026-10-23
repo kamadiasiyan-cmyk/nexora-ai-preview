@@ -3,10 +3,12 @@ on:
   pull_request:
     paths:
       - 'shopping-api/**'
+      - 'index.html'
       - '.github/workflows/watchtower-tests.yml'
   push:
     paths:
       - 'shopping-api/**'
+      - 'index.html'
       - '.github/workflows/watchtower-tests.yml'
 jobs:
   node-tests:
@@ -23,6 +25,8 @@ jobs:
         run: |
           node --check shopping-api/server.js
           node --check shopping-api/offer-utils.js
+          node --check shopping-api/comparison-utils.js
+          node --check shopping-api/frontend-smoke.test.js
       - name: Automated tests (mocked provider, no API keys)
         working-directory: shopping-api
         run: npm test
