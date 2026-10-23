@@ -13,11 +13,13 @@ function price(x){
   const n=Number(x.trim());return validPrice(n)?n:null;
 }
 function safeUrl(x){
-  try{const u=new URL(x);return u.protocol==='https:'&&!u.username&&!u.password?u.href:null}catch{return null}
+  try{const u=new URL(x);if(u.protocol!=='https:'||u.username||u.password)return null;
+    u.hash='';for(const k of [...u.searchParams.keys()])if(k.toLowerCase().startsWith('utm_')||['gclid','fbclid','gbraid','wbraid','msclkid'].includes(k.toLowerCase()))u.searchParams.delete(k);
+    return u.href}catch{return null}
 }
 function validItem(x){return !!(x&&typeof x==='object'&&!Array.isArray(x)&&typeof x.title==='string'&&x.title.trim()&&x.title.length<=250&&(!x.url||safeUrl(x.url)))}
 function loadItems(storage){
-  try{const a=JSON.parse(storage.getItem(WATCH_KEY)||'[]');return Array.isArray(a)?a.filter(validItem).slice(0,500):[]}catch{return []}
+  try{const a=JSON.parse(storage.getItem(WATCH_KEY)||'[]');return Array.isArray(a)?a.filter(x=>x&&typeof x==='object'&&!Array.isArray(x)&&typeof x.title==='string'&&x.title.trim()&&x.title.length<=250).slice(0,500).map(x=>x.url&&!safeUrl(x.url)?{...x,url:undefined}:x):[]}catch{return []}
 }
 function keyFor(item){return encodeURIComponent((item.url&&safeUrl(item.url))||[item.mode||'products',item.merchant||'',item.query||item.title].join('|'))}
 function loadHistory(storage){
