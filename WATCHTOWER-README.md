@@ -37,3 +37,15 @@ Previous example: `GET /api/search?q=running%20shoes` returns `{query,offers:[{t
 - Run local tests with `cd shopping-api && npm test` (Node 20+). Tests use mocked provider responses, not live API credentials.
 - The static GitHub Pages site does **not** perform automatic price checks, price history collection, closed-browser notifications, or background restock monitoring. A separately deployed backend and durable storage are required for those capabilities.
 - Configure `SEARCHAPI_KEY` only in your backend hosting environment; never commit credentials or expose them in client-side JavaScript.
+
+## Local watchlist targets and manual observations (development PR)
+
+The homepage watchlist now supports optional **target prices**, a short per-product **price history**, and a **Check price** action. The check uses the separately configured SearchApi.io proxy, searches the product title, and **updates only when a returned offer has the exact normalized HTTPS product URL** (common tracking parameters are ignored). A missing match does not change the stored price or availability. These are observations of provider results, **not guarantees** of live inventory or comparable products.
+
+- Confirmed restocks are reported only after an observed transition from explicitly out of stock to explicitly in stock. Unknown availability is never treated as proof of a restock.
+- Target crossings and price decreases are reported in the on-page status area after manual checks. **No push, email, scheduled, or closed-browser notifications exist.**
+- Product history is saved in the same browser under `watchtower-price-history-v1` (up to 60 changes per product). The original `watchtower-watchlist-v1` key is retained, and existing watchlist metadata is preserved. Older saved entries with unsafe URLs retain their titles but cannot use unsafe links for price checks.
+- **Export backup** downloads a JSON file containing saved items and local history. **Import backup** merges new items without replacing existing entries, and merges valid observations. Import files are limited to 2 MB. Treat backup files as private because they may contain saved shopping interests.
+- History is collected only from initial saved offer prices and explicit manual checks; the site does not backfill past prices. Browser storage can be cleared by the user or browser and is not a durable monitoring database.
+
+Tests: `cd shopping-api && npm test` runs offline Node tests for targets, URL safety, backup merging, history limits, and restock transitions alongside existing API tests. These tests mock upstream results and do not verify production hosting.
