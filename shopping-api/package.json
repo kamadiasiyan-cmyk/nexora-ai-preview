@@ -1,0 +1,13 @@
+{
+  "name": "watchtower-search-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WatchTower optional server-side SearchApi.io search proxy",
+  "scripts": {
+    "test": "node --test",
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
