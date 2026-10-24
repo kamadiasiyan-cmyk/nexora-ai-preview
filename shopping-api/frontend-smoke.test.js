@@ -75,3 +75,21 @@ test('visible comparison does not combine unrelated currencies',()=>{
   assert.match(html,/W\.price\(x\.price\)!==null/);
   assert.doesNotMatch(html,/Math\.min\(\.\.\.prices\)/);
 });
+
+test('manual-check activity inbox is accessible, explicitly local, and safe to clear',()=>{
+ for(const id of ['alerts','alertCount','alertItems','clearAlerts']){
+   assert.equal([...html.matchAll(new RegExp('id="'+id+'"','g'))].length,1,id+' must be unique');
+ }
+ assert.match(html,/no background alerts or push notifications/);
+ assert.match(html,/W\.loadAlerts\(storage\)/);
+ assert.match(html,/W\.recordAlerts\(alerts,item,event,amount\)/);
+ assert.match(html,/alerts=\[\];persistAlerts\(\);renderAlerts\(\)/);
+ assert.match(html,/history,alerts\},null,2/);
+ assert.match(html,/W\.mergeAlerts\(alerts,data\.alerts\)/);
+});
+test('manual check deduplicates in-flight requests and ignores removed items',()=>{
+ assert.match(html,/pendingChecks\.has\(checkedKey\)/);
+ assert.match(html,/pendingChecks\.add\(checkedKey\)/);
+ assert.match(html,/saved\.includes\(item\)/);
+ assert.match(html,/finally\{pendingChecks\.delete\(checkedKey\)\}/);
+});
