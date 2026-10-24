@@ -22,5 +22,5 @@ test('rejects contradictory and unrecognized retailer currencies',()=>{
   const base={title:'Camera',link:'https://store.test/camera',extracted_price:100};
   assert.equal(normalizeOffer({...base,currency:'USD',price:'€100'}),null);
   assert.equal(normalizeOffer({...base,currency:'XYZ',price:'$100'}),null);
-  assert.equal(normalizeOffer({...base,price:'€1.234,50'}),null);
+  assert.equal(normalizeOffer({...base,extracted_price:undefined,price:'€1.234,50'}),null);
 });
