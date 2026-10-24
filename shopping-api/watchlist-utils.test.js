@@ -79,3 +79,33 @@ test('invalid currency offers cannot silently appear in USD price ranges',()=>{
   {currency:'EUR',min:30,max:30,count:1},{currency:'USD',min:25,max:25,count:1}
  ]);
 });
+
+test('manual price checks produce a bounded browser-local activity inbox',()=>{
+ const item={title:'Headphones',url:'https://shop.example/headphones',currency:'USD'};
+ const events={dropped:true,reached:true,restocked:true};
+ const first=w.recordAlerts([],item,events,49,1000);
+ assert.deepEqual(first.map(x=>x.type),['price_drop','target_reached','restock']);
+ assert.equal(first[0].price,49);
+ assert.equal(w.recordAlerts(first,item,events,49,1000).length,3,'repeat event must not duplicate');
+ assert.equal(w.recordAlerts(first,item,{},49,2000).length,3,'unchanged prices should not alert');
+ let many=first;
+ for(let i=1;i<=150;i++)many=w.recordAlerts(many,item,{dropped:true},40,i+1000);
+ assert.equal(many.length,100);
+ assert.ok(many[0].at>many[99].at);
+});
+test('local activity restores safely and invalid imported alerts are discarded',()=>{
+ const item={title:'Laptop',currency:'EUR'};
+ const good=w.recordAlerts([],item,{reached:true},200,100);
+ const invalid=[{...good[0],title:'<img onerror=alert(1)>',price:-1},{...good[0],type:'arbitrary'}];
+ const merged=w.mergeAlerts(good,[...invalid,...good]);
+ assert.equal(merged.length,1);
+ const restored=w.loadAlerts(storage({[w.ALERTS_KEY]:JSON.stringify([...good,...invalid])}));
+ assert.deepEqual(restored,good);
+ assert.deepEqual(w.loadAlerts(storage({},true)),[]);
+});
+test('manual activity rejects unsupported currencies and malformed events',()=>{
+ const item={title:'Laptop',currency:'XYZ'};
+ assert.deepEqual(w.recordAlerts([],item,{dropped:true},20,100),[]);
+ assert.deepEqual(w.recordAlerts([], {title:'Laptop',currency:'USD'}, {dropped:true},NaN,100),[]);
+ assert.deepEqual(w.recordAlerts([], {title:'Laptop',currency:'USD'}, {dropped:true},20,-1),[]);
+});

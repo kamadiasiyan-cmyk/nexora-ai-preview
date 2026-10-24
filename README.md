@@ -10,6 +10,12 @@ If that URL returns 404, the repository owner must go to **Settings â†’ Pages â†
 
 GitHub Pages **does not run the Node backend**. Without a separately deployed API and server-side SearchApi.io credentials, the frontend can open retailer search links and manage local saved searches/watchlists, but it cannot return aggregated live offers, website results, scheduled alerts, or closed-browser notifications.
 
+## Manual-check activity (browser only)
+
+When a saved product is manually checked against a configured search backend, WatchTower now keeps a **local activity inbox** for detected price drops, target-price crossings, and confirmed restocks. Events are not generated in the background and are **not** push/email notifications. They are capped at the most recent 100 events, can be cleared independently of watchlists and price history, and are included in the existing JSON backup format. Older backups without an activity field still import normally.
+
+The app ignores duplicate simultaneous checks for the same product and discards a pending check if its saved item was removed or replaced while the request was in flight. Events and watchlists are stored in the current browser only; clearing browser storage removes them unless backed up.
+
 ## Develop and test
 
 Run `cd shopping-api && npm test` with Node 20+. The tests use mocked provider responses; they do not verify live SearchApi.io behavior. See [WATCHTOWER-README.md](WATCHTOWER-README.md) for API setup, safety notes, and watchlist limitations.
