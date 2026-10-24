@@ -18,3 +18,16 @@ test('computes odd median and cheapest confirmed in-stock offer', () => {
   const r=summarizeOffers([{price:12,merchant:'A',inStock:false},{price:9,merchant:'B',inStock:null},{price:18,merchant:'C',inStock:true}]);
   assert.equal(r.medianPrice,12);assert.equal(r.lowestConfirmedInStockPrice,18);
 });
+
+test('keeps single-currency comparison values in their actual currency',()=>{
+  const r=summarizeOffers([{price:15,currency:'EUR',merchant:'A',inStock:true},{price:25,currency:'EUR',merchant:'B',inStock:false}]);
+  assert.equal(r.currency,'EUR');assert.equal(r.lowestPrice,15);assert.equal(r.medianPrice,20);
+});
+test('does not compare euros to dollars or invent foreign exchange rates',()=>{
+  const r=summarizeOffers([{price:100,currency:'USD',merchant:'A',inStock:true},{price:80,currency:'EUR',merchant:'B',inStock:false},{price:90,currency:'USD',merchant:'C',inStock:null}]);
+  assert.equal(r.currency,null);assert.equal(r.lowestPrice,null);assert.equal(r.highestPrice,null);
+  assert.equal(r.medianPrice,null);assert.equal(r.lowestConfirmedInStockPrice,null);
+  assert.equal(r.offerCount,3);assert.equal(r.confirmedInStockCount,1);
+  assert.equal(r.byCurrency.USD.lowestPrice,90);assert.equal(r.byCurrency.USD.medianPrice,95);
+  assert.equal(r.byCurrency.EUR.lowestPrice,80);assert.equal(r.byCurrency.EUR.currency,'EUR');
+});
