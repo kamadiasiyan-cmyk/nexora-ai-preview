@@ -5,7 +5,7 @@
   else root.WatchlistUtils=api;
 })(typeof globalThis!=='undefined'?globalThis:this,function(){
 'use strict';
-const WATCH_KEY='watchtower-watchlist-v1', HISTORY_KEY='watchtower-price-history-v1';
+const WATCH_KEY='watchtower-watchlist-v1', HISTORY_KEY='watchtower-price-history-v1', ALERTS_KEY='watchtower-local-alerts-v1';
 const validPrice=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1e9;
 const SUPPORTED_CURRENCIES=new Set(['USD','EUR','GBP','CAD','AUD','JPY','INR','CHF','NZD']);
 function currencyOf(item){
@@ -81,5 +81,36 @@ function mergeHistory(current,incoming){
     if(valid.length)out[k]=[...(out[k]||[]),...valid].sort((a,b)=>a.at-b.at).filter((x,i,a)=>i===0||x.at!==a[i-1].at).slice(-60);
   }return out;
 }
-return {WATCH_KEY,HISTORY_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,priceRanges};
+
+/* Manual-check activity only. These browser-local events are not push notifications. */
+const ALERT_TYPES=new Set(['price_drop','target_reached','restock']);
+function validAlert(x){
+  return !!(x&&typeof x==='object'&&!Array.isArray(x)&&typeof x.id==='string'&&x.id.length<=2200&&
+    typeof x.key==='string'&&x.key.length<=2000&&typeof x.title==='string'&&x.title.trim()&&x.title.length<=250&&
+    ALERT_TYPES.has(x.type)&&Number.isSafeInteger(x.at)&&x.at>0&&x.at<=8640000000000000&&
+    validPrice(x.price)&&currencyOf(x)!==null);
+}
+function mergeAlerts(current,incoming){
+  const out=[],seen=new Set();
+  for(const x of [...(Array.isArray(current)?current:[]),...(Array.isArray(incoming)?incoming:[])]){
+    if(!validAlert(x)||seen.has(x.id))continue;
+    seen.add(x.id);
+    out.push({id:x.id,key:x.key,title:x.title,type:x.type,at:x.at,price:x.price,currency:currencyOf(x)});
+  }
+  return out.sort((a,b)=>b.at-a.at).slice(0,100);
+}
+function loadAlerts(storage){
+  try{return mergeAlerts([],JSON.parse(storage.getItem(ALERTS_KEY)||'[]'))}catch{return []}
+}
+function recordAlerts(current,item,event,amount,at=Date.now()){
+  if(!validItem(item)||!validPrice(amount)||!Number.isSafeInteger(at)||at<=0||at>8640000000000000)return mergeAlerts(current,[]);
+  const currency=currencyOf(item);if(currency===null)return mergeAlerts(current,[]);
+  const key=keyFor(item),added=[];
+  for(const [flag,type] of [['dropped','price_drop'],['reached','target_reached'],['restocked','restock']]){
+    if(event&&event[flag]===true)added.push({id:at+':'+key+':'+type,key,title:item.title.trim(),type,at,price:amount,currency});
+  }
+  return mergeAlerts(current,added);
+}
+
+return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,priceRanges,validAlert,mergeAlerts,loadAlerts,recordAlerts};
 });
