@@ -7,6 +7,18 @@
 'use strict';
 const WATCH_KEY='watchtower-watchlist-v1', HISTORY_KEY='watchtower-price-history-v1';
 const validPrice=n=>typeof n==='number'&&Number.isFinite(n)&&n>=0&&n<=1e9;
+const SUPPORTED_CURRENCIES=new Set(['USD','EUR','GBP','CAD','AUD','JPY','INR','CHF','NZD']);
+function currencyOf(item){
+  const value=item?.currency;
+  if(value===undefined||value===null||value==='')return 'USD'; // Legacy saved products
+  if(typeof value!=='string')return null;
+  const code=value.trim().toUpperCase();
+  return SUPPORTED_CURRENCIES.has(code)?code:null;
+}
+function matchingCurrency(saved,offer){
+  const a=currencyOf(saved),b=currencyOf(offer);
+  return a!==null&&a===b;
+}
 function price(x){
   if(typeof x==='number')return validPrice(x)?x:null;
   if(typeof x!=='string'||!/^(?:\d{1,9})(?:\.\d{1,2})?$/.test(x.trim()))return null;
@@ -48,7 +60,7 @@ function priceRanges(offers){
     if(!offer||typeof offer!=='object')continue;
     const amount=price(offer.price);
     if(amount===null)continue;
-    const currency=typeof offer.currency==='string'&&/^[A-Z]{3}$/.test(offer.currency)?offer.currency:'USD';
+    const currency=currencyOf(offer);if(currency===null)continue;
     const old=groups.get(currency)||{currency,min:amount,max:amount,count:0};
     old.min=Math.min(old.min,amount);old.max=Math.max(old.max,amount);old.count++;
     groups.set(currency,old);
@@ -69,5 +81,5 @@ function mergeHistory(current,incoming){
     if(valid.length)out[k]=[...(out[k]||[]),...valid].sort((a,b)=>a.at-b.at).filter((x,i,a)=>i===0||x.at!==a[i-1].at).slice(-60);
   }return out;
 }
-return {WATCH_KEY,HISTORY_KEY,price,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,priceRanges};
+return {WATCH_KEY,HISTORY_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,priceRanges};
 });
