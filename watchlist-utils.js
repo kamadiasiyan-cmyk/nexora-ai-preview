@@ -35,6 +35,26 @@ function observe(history,item,amount,stock,at=Date.now()){
   if(!prev||prev.price!==amount||prev.stock!==state)history[k]=rows.concat([{at,price:amount,stock:state}]).slice(-60);
   return {dropped,restocked,reached,previousPrice:prev?.price??null};
 }
+function historyStats(rows){
+  const valid=Array.isArray(rows)?rows.filter(x=>x&&Number.isFinite(x.at)&&x.at>0&&validPrice(x.price)).sort((a,b)=>a.at-b.at):[];
+  if(!valid.length)return null;
+  const first=valid[0].price,last=valid[valid.length-1].price;
+  const lowest=Math.min(...valid.map(x=>x.price)),highest=Math.max(...valid.map(x=>x.price));
+  return {count:valid.length,first,last,lowest,highest,change:last-first,percentChange:first>0?Math.round((last-first)/first*10000)/100:null};
+}
+function priceRanges(offers){
+  const groups=new Map();
+  for(const offer of Array.isArray(offers)?offers:[]){
+    if(!offer||typeof offer!=='object')continue;
+    const amount=price(offer.price);
+    if(amount===null)continue;
+    const currency=typeof offer.currency==='string'&&/^[A-Z]{3}$/.test(offer.currency)?offer.currency:'USD';
+    const old=groups.get(currency)||{currency,min:amount,max:amount,count:0};
+    old.min=Math.min(old.min,amount);old.max=Math.max(old.max,amount);old.count++;
+    groups.set(currency,old);
+  }
+  return [...groups.values()].sort((a,b)=>a.currency.localeCompare(b.currency));
+}
 function mergeItems(current,incoming){
   const result=current.filter(validItem).slice(0,500),seen=new Set(result.map(keyFor));
   for(const item of Array.isArray(incoming)?incoming:[]){if(!validItem(item))continue;const k=keyFor(item);if(!seen.has(k)&&result.length<500){result.push(item);seen.add(k)}}
@@ -49,5 +69,5 @@ function mergeHistory(current,incoming){
     if(valid.length)out[k]=[...(out[k]||[]),...valid].sort((a,b)=>a.at-b.at).filter((x,i,a)=>i===0||x.at!==a[i-1].at).slice(-60);
   }return out;
 }
-return {WATCH_KEY,HISTORY_KEY,price,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory};
+return {WATCH_KEY,HISTORY_KEY,price,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,priceRanges};
 });

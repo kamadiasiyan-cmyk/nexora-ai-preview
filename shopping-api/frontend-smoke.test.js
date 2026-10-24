@@ -56,3 +56,22 @@ test('Pages publisher includes only static frontend files and runs tests first',
   assert.match(workflow, /actions\/deploy-pages@v4/);
   assert.doesNotMatch(workflow, /cp.*shopping-api\/server\.js.*_site/);
 });
+
+test('homepage handles blocked browser storage without crashing at initialization',()=>{
+  assert.match(html,/const storage=\(\(\)=>\{try\{return window\.localStorage\}catch/);
+  assert.match(html,/W\.loadItems\(storage\),history=W\.loadHistory\(storage\)/);
+  assert.doesNotMatch(html,/W\.loadItems\(localStorage\)/);
+});
+test('watchlist caps saves and displays historical min max and percentage changes',()=>{
+  assert.match(html,/saved\.length>=500/);
+  assert.match(html,/W\.historyStats\(rows\)/);
+  assert.match(html,/Lowest observed:/);
+  assert.match(html,/Highest observed:/);
+  assert.match(html,/stats\.percentChange/);
+});
+test('visible comparison does not combine unrelated currencies',()=>{
+  assert.match(html,/W\.priceRanges\(filtered\)/);
+  assert.match(html,/Max price \(USD\)/);
+  assert.match(html,/W\.price\(x\.price\)!==null/);
+  assert.doesNotMatch(html,/Math\.min\(\.\.\.prices\)/);
+});
