@@ -1,0 +1,32 @@
+name: WatchTower search API tests
+on:
+  pull_request:
+    paths:
+      - 'shopping-api/**'
+      - 'index.html'
+      - '.github/workflows/watchtower-tests.yml'
+  push:
+    paths:
+      - 'shopping-api/**'
+      - 'index.html'
+      - '.github/workflows/watchtower-tests.yml'
+jobs:
+  node-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check shopping-api/server.js
+          node --check shopping-api/offer-utils.js
+          node --check shopping-api/comparison-utils.js
+          node --check shopping-api/frontend-smoke.test.js
+      - name: Automated tests (mocked provider, no API keys)
+        working-directory: shopping-api
+        run: npm test
