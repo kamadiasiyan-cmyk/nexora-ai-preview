@@ -41,3 +41,18 @@ test('backup import has a file size limit and preserves existing items', () => {
   assert.match(html, /W\.mergeItems\(saved,data\.items\)/);
   assert.match(html, /W\.mergeHistory\(history,data\.history\)/);
 });
+
+test('browser rejects unsafe retailer URLs and clearly explains offline website search', () => {
+  assert.match(html, /W\\.safeUrl\\(x\\.url\\)/);
+  assert.match(html, /const key=W\\.safeUrl\\(x\\.url\\)/);
+  assert.match(html, /Backend needed/);
+  assert.match(html, /id="apiStatus"[^>]*aria-live="polite"/);
+});
+
+test('Pages publisher includes only static frontend files and runs tests first', () => {
+  const workflow = fs.readFileSync(path.join(__dirname, '..', '.github', 'workflows', 'publish-watchtower.yml'), 'utf8');
+  assert.match(workflow, /npm test/);
+  assert.match(workflow, /cp index\\.html watchlist-utils\\.js _site\\//);
+  assert.match(workflow, /actions\\/deploy-pages@v4/);
+  assert.doesNotMatch(workflow, /cp.*shopping-api\\/server\\.js.*_site/);
+});
