@@ -14,3 +14,19 @@ test('normalizes and caches shopping results',async()=>{const original=global.fe
 test('coalesces parallel requests',async()=>{const original=global.fetch;let calls=0;global.fetch=async()=>{calls++;await new Promise(r=>setTimeout(r,20));return {ok:true,json:async()=>({organic_results:[{title:'Example',link:'https://site.test/p'}]})}};try{const [a,b]=await Promise.all([request('/api/search?q=parallel-web-test&mode=web'),request('/api/search?q=parallel-web-test&mode=web')]);assert.equal(a.status,200);assert.equal(b.status,200);assert.equal(a.body.comparison,null);assert.equal(b.body.comparison,null);assert.equal(calls,1)}finally{global.fetch=original}});
 test('never leaks upstream errors',async()=>{const original=global.fetch;global.fetch=async()=>{throw Error('secret-test-placeholder')};try{const r=await request('/api/search?q=provider-failure-test&mode=web');assert.equal(r.status,502);assert.doesNotMatch(JSON.stringify(r.body),/secret-test-placeholder/)}finally{global.fetch=original}});
 test('limits concurrent upstream searches',async()=>{const original=global.fetch;let release;const gate=new Promise(r=>release=r);global.fetch=async()=>{await gate;return {ok:true,json:async()=>({shopping_results:[]})}};try{const jobs=Array.from({length:8},(_,i)=>request('/api/search?q=load-test-'+i));await new Promise(r=>setTimeout(r,30));const busy=await request('/api/search?q=load-test-overflow');assert.equal(busy.status,503);release();assert.equal((await Promise.all(jobs)).filter(x=>x.status===200).length,8)}finally{release();global.fetch=original}});
+
+test('search API keeps mixed currencies separate without disclosing upstream data',async()=>{
+ const original=global.fetch;
+ global.fetch=async()=>({ok:true,json:async()=>({shopping_results:[
+  {title:'Headphones',price:'€79.99',link:'https://eu.test/p',source:'Europe'},
+  {title:'Headphones',price:'$89.99',link:'https://us.test/p',source:'US'}
+ ]})});
+ try{
+  const r=await request('/api/search?q=mixed-currency-test');
+  assert.equal(r.status,200);assert.deepEqual(r.body.offers.map(o=>o.currency),['EUR','USD']);
+  assert.equal(r.body.comparison.currency,null);
+  assert.equal(r.body.comparison.lowestPrice,null);
+  assert.equal(r.body.comparison.byCurrency.EUR.lowestPrice,79.99);
+  assert.equal(r.body.comparison.byCurrency.USD.lowestPrice,89.99);
+ }finally{global.fetch=original}
+});

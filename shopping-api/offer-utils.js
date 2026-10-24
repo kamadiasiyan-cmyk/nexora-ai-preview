@@ -29,14 +29,37 @@ function stockState(raw) {
   if (['out of stock', 'sold out'].includes(status)) return false;
   return null;
 }
+// Explicitly recognize currency before interpreting prices. Never silently relabel euros or pounds as dollars.
+const CURRENCIES = new Set(['USD','EUR','GBP','CAD','AUD','JPY','INR','CHF','NZD']);
+function offerCurrency(raw) {
+  const explicit = typeof raw.currency === 'string' ? raw.currency.trim().toUpperCase() : '';
+  if (explicit && !CURRENCIES.has(explicit)) return null;
+  const label = typeof raw.price === 'string' ? raw.price.trim() : '';
+  const marker = label.match(/^(USD|EUR|GBP|CAD|AUD|JPY|INR|CHF|NZD)\b/i);
+  const symbol = label.startsWith('€') ? 'EUR' : label.startsWith('£') ? 'GBP' :
+    label.startsWith('¥') ? 'JPY' : /^C\$/i.test(label) ? 'CAD' :
+    /^A\$/i.test(label) ? 'AUD' : /^US\$/i.test(label) ? 'USD' : null;
+  const detected = marker ? marker[1].toUpperCase() : symbol;
+  if (explicit && detected && explicit !== detected) return null;
+  return explicit || detected || 'USD';
+}
+function offerPrice(raw, currency) {
+  let value = raw.extracted_price ?? raw.price;
+  if (typeof value === 'string') {
+    value = value.trim().replace(/^(?:USD|EUR|GBP|CAD|AUD|JPY|INR|CHF|NZD)\s*/i, '')
+      .replace(/^(?:€|£|¥|C\$|A\$)\s*/i, '');
+  }
+  return parsePrice(value);
+}
 function normalizeOffer(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
   const title = String(raw.title || '').trim().slice(0, 250);
   const url = cleanUrl(raw.link || raw.product_link || raw.url);
-  const price = parsePrice(raw.extracted_price ?? raw.price);
+  const currency = offerCurrency(raw);
+  const price = currency ? offerPrice(raw, currency) : null;
   if (!title || !url || price === null) return null;
   return { title, merchant: String(raw.source || raw.merchant || 'Retailer').trim().slice(0, 90),
-    price, currency: 'USD', url, shipping: String(raw.delivery || '').slice(0, 140),
+    price, currency, url, shipping: String(raw.delivery || '').slice(0, 140),
     inStock: stockState(raw) };
 }
 function normalizeOffers(raw) {

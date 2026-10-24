@@ -10,3 +10,17 @@ test('rejects incomplete offers',()=>{assert.equal(normalizeOffer({title:'Phone'
 test('deduplicates tracking variants but preserves distinct products',()=>{const x={title:'Phone',price:100,link:'https://shop.test/p?sku=1'};assert.equal(normalizeOffers([x,{...x,link:x.link+'&utm_source=email'}]).length,1);assert.equal(normalizeOffers([x,{...x,link:'https://shop.test/p?sku=2'}]).length,2)});
 test('validates website results',()=>{const x={title:'Article',link:'https://site.test/page'};assert.equal(normalizeWebResults([x,{...x,link:x.link+'?utm_source=a'},{title:'Bad',link:'javascript:bad()'}]).length,1)});
 test('caps search result sizes',()=>{assert.equal(normalizeOffers(Array.from({length:60},(_,i)=>({title:'Item',price:i,link:'https://store.test/'+i}))).length,40);assert.equal(normalizeWebResults(Array.from({length:50},(_,i)=>({title:'Site',link:'https://site.test/'+i}))).length,30)});
+
+test('retains explicit and symbol-based currencies instead of silently assigning USD',()=>{
+  const base={title:'Camera',link:'https://store.test/camera'};
+  assert.deepEqual(['EUR','GBP','CAD','JPY'].map((currency,i)=>normalizeOffer({...base,currency,extracted_price:100+i,price:['€100','£101','C$102','¥103'][i]})?.currency),['EUR','GBP','CAD','JPY']);
+  assert.equal(normalizeOffer({...base,price:'€1,299.99'})?.price,1299.99);
+  assert.equal(normalizeOffer({...base,price:'€1,299.99'})?.currency,'EUR');
+  assert.equal(normalizeOffer({...base,price:'GBP 1,299.99'})?.currency,'GBP');
+});
+test('rejects contradictory and unrecognized retailer currencies',()=>{
+  const base={title:'Camera',link:'https://store.test/camera',extracted_price:100};
+  assert.equal(normalizeOffer({...base,currency:'USD',price:'€100'}),null);
+  assert.equal(normalizeOffer({...base,currency:'XYZ',price:'$100'}),null);
+  assert.equal(normalizeOffer({...base,extracted_price:undefined,price:'€1.234,50'}),null);
+});
