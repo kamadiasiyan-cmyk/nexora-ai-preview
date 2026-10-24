@@ -64,3 +64,18 @@ test('price ranges keep different currencies separate and ignore invalid prices'
 test('price range inputs cannot turn empty or malformed prices into zero',()=>{
  assert.deepEqual(w.priceRanges([{price:'',currency:'USD'},{price:'abc'},{price:false},{price:0,currency:'USD'}]),[{currency:'USD',min:0,max:0,count:1}]);
 });
+
+test('currency checks protect watchlist price history from cross-currency updates',()=>{
+ const usd={title:'Laptop',currency:'USD'},eur={title:'Laptop',currency:'EUR'};
+ assert.equal(w.matchingCurrency(usd,{currency:'EUR'}),false);
+ assert.equal(w.matchingCurrency(eur,{currency:'EUR'}),true);
+ assert.equal(w.matchingCurrency({title:'Legacy'},{currency:'USD'}),true);
+ assert.equal(w.matchingCurrency({title:'Legacy'},{currency:'GBP'}),false);
+ assert.equal(w.matchingCurrency({currency:'XYZ'},{currency:'XYZ'}),false);
+ assert.equal(w.currencyOf({currency:'eur'}),'EUR');
+});
+test('invalid currency offers cannot silently appear in USD price ranges',()=>{
+ assert.deepEqual(w.priceRanges([{price:10,currency:'XYZ'},{price:25,currency:'USD'},{price:30,currency:'eur'}]),[
+  {currency:'EUR',min:30,max:30,count:1},{currency:'USD',min:25,max:25,count:1}
+ ]);
+});
