@@ -50,3 +50,17 @@ test('tracking parameters do not break exact product matching',()=>{
  assert.equal(a,b);
  assert.equal(w.keyFor({title:'A',url:a}),w.keyFor({title:'B',url:b}));
 });
+
+test('history stats use chronological observations and calculate real percentage drops',()=>{
+ const stats=w.historyStats([{at:30,price:80},{at:10,price:100},{at:20,price:70}]);
+ assert.deepEqual(stats,{count:3,first:100,last:80,lowest:70,highest:100,change:-20,percentChange:-20});
+ assert.equal(w.historyStats([]),null);
+ assert.equal(w.historyStats([{at:1,price:0},{at:2,price:5}]).percentChange,null);
+});
+test('price ranges keep different currencies separate and ignore invalid prices',()=>{
+ const ranges=w.priceRanges([{price:30,currency:'USD'},{price:10,currency:'USD'},{price:40,currency:'EUR'},{price:null,currency:'USD'},{price:-4,currency:'USD'}]);
+ assert.deepEqual(ranges,[{currency:'EUR',min:40,max:40,count:1},{currency:'USD',min:10,max:30,count:2}]);
+});
+test('price range inputs cannot turn empty or malformed prices into zero',()=>{
+ assert.deepEqual(w.priceRanges([{price:'',currency:'USD'},{price:'abc'},{price:false},{price:0,currency:'USD'}]),[{currency:'USD',min:0,max:0,count:1}]);
+});
