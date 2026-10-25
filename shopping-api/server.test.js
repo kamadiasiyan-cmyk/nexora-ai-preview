@@ -38,3 +38,45 @@ test('search API keeps mixed currencies separate without disclosing upstream dat
   assert.equal(r.body.comparison.byCurrency.USD.lowestPrice,89.99);
  }finally{global.fetch=original}
 });
+
+
+test('rejects deceptive search controls and disallows POST health probes',async()=>{
+  assert.equal((await request('/api/search?q=shoes%E2%80%AEfake')).status,400);
+  assert.equal((await request('/api/search?q=shoes%00fake')).status,400);
+  assert.equal((await request('/health','POST')).status,405);
+});
+test('rejects oversized provider payloads using Content-Length before parsing',async()=>{
+  const original=global.fetch;let parsed=false;
+  global.fetch=async()=>({ok:true,headers:{get:()=>String(2*1024*1024+1)},json:async()=>{parsed=true;return {shopping_results:[]}}});
+  try{
+    const r=await request('/api/search?q=oversized-declared-test');
+    assert.equal(r.status,502);assert.equal(parsed,false);
+    assert.doesNotMatch(JSON.stringify(r.body),/Provider response too large/);
+  }finally{global.fetch=original}
+});
+test('aborts streamed upstream responses larger than 2 MiB',async()=>{
+  const original=global.fetch;let cancelled=false;
+  global.fetch=async()=>({ok:true,body:{getReader:()=>({
+    read:async()=>({done:false,value:Buffer.alloc(2*1024*1024+1)}),
+    cancel:async()=>{cancelled=true}
+  })}});
+  try{
+    const r=await request('/api/search?q=oversized-stream-test');
+    assert.equal(r.status,502);assert.equal(cancelled,true);
+  }finally{global.fetch=original}
+});
+test('parses bounded streamed website search results without a JSON fallback',async()=>{
+  const original=global.fetch;
+  const payload=Buffer.from(JSON.stringify({organic_results:[{title:'Helpful page',link:'https://docs.example.test/help',snippet:'Safe result'}]}));
+  let reads=0;
+  global.fetch=async()=>({ok:true,body:{getReader:()=>({
+    read:async()=>++reads===1?{done:false,value:payload}:{done:true},
+    cancel:async()=>{}
+  })}});
+  try{
+    const r=await request('/api/search?q=bounded-stream-test&mode=web');
+    assert.equal(r.status,200);assert.equal(r.body.results.length,1);
+    assert.equal(r.body.results[0].title,'Helpful page');
+    assert.equal(r.body.comparison,null);
+  }finally{global.fetch=original}
+});
