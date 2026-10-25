@@ -54,6 +54,22 @@ function historyStats(rows){
   const lowest=Math.min(...valid.map(x=>x.price)),highest=Math.max(...valid.map(x=>x.price));
   return {count:valid.length,first,last,lowest,highest,change:last-first,percentChange:first>0?Math.round((last-first)/first*10000)/100:null};
 }
+/* Compact, browser-only chart coordinates from observed prices; never estimates missing prices. */
+function sparklinePoints(rows,width=160,height=44){
+  if(!Array.isArray(rows))return null;
+  const valid=rows.filter(x=>x&&Number.isSafeInteger(x.at)&&x.at>0&&validPrice(x.price)).sort((a,b)=>a.at-b.at).slice(-60);
+  if(valid.length<2)return null;
+  const w=Number.isFinite(width)?Math.max(20,Math.min(800,width)):160;
+  const h=Number.isFinite(height)?Math.max(20,Math.min(400,height)):44;
+  const min=Math.min(...valid.map(x=>x.price)),max=Math.max(...valid.map(x=>x.price));
+  const start=valid[0].at,end=valid[valid.length-1].at;
+  const round=n=>Number(n.toFixed(2));
+  return valid.map((x,i)=>{
+    const horizontal=end>start?(x.at-start)/(end-start):i/(valid.length-1);
+    const vertical=max>min?(max-x.price)/(max-min):0.5;
+    return round(5+horizontal*(w-10))+','+round(5+vertical*(h-10));
+  }).join(' ');
+}
 function priceRanges(offers){
   const groups=new Map();
   for(const offer of Array.isArray(offers)?offers:[]){
@@ -141,5 +157,5 @@ function recordAlerts(current,item,event,amount,at=Date.now()){
   return mergeAlerts(current,added);
 }
 
-return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,priceRanges,browseItems,validAlert,mergeAlerts,loadAlerts,recordAlerts};
+return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseItems,validAlert,mergeAlerts,loadAlerts,recordAlerts};
 });
