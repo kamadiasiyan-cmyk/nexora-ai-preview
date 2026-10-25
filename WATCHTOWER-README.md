@@ -49,3 +49,9 @@ The homepage watchlist now supports optional **target prices**, a short per-prod
 - History is collected only from initial saved offer prices and explicit manual checks; the site does not backfill past prices. Browser storage can be cleared by the user or browser and is not a durable monitoring database.
 
 Tests: `cd shopping-api && npm test` runs offline Node tests for targets, URL safety, backup merging, history limits, and restock transitions alongside existing API tests. These tests mock upstream results and do not verify production hosting.
+
+## Watchlist browsing (October 25 update)
+
+The browser-local watchlist now supports instant text search across saved titles, retailer names, and saved queries; filters for saved products, searches, target prices, target hits, confirmed out-of-stock items, and never-checked entries; and sorting by name or observed price within currency groups. Products without an observed price sort last. The **Clear filters** button restores the full list. Filtering and sorting never modify saved data, and edit/check/remove actions still target the correct original saved item.
+
+Target-price and stock filters use the **last locally recorded observation**, not live retailer data. No new background monitoring, provider credentials, or push notifications are implied.
