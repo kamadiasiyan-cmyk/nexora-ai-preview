@@ -67,3 +67,9 @@ Saved products with at least two valid price observations display a compact, acc
 The Activity section can now filter locally recorded manual-check events by product name or event type (price drop, target reached, or confirmed restock). Filters do not delete or modify the underlying activity log. The watchlist also offers **Price history CSV**, and the Activity section offers **Activity CSV**. Exports contain only browser-local observations and are suitable for offline review; they are not live retailer feeds. Price-history export includes observations for currently saved products, not products already removed from the watchlist.
 
 CSV cells are quoted and potentially dangerous spreadsheet formula prefixes are escaped. Exported files may reveal shopping interests, saved URLs, and prices, so keep them private. Existing JSON backups and localStorage keys are unchanged. None of these features introduces scheduled checks, notifications, hosted storage, or SearchApi.io credentials.
+
+## Upstream payload and search-input hardening (October 25 update)
+
+The optional Node search proxy now reads streamed SearchApi.io JSON with a **2 MiB response limit**, including early rejection when the upstream `Content-Length` exceeds the limit. Oversized or malformed upstream responses produce a generic 502 error; provider details and credentials are not returned to the browser. The limit protects memory on small hosts but does not replace hosting quotas or authentication. Existing mocked-provider tests use a JSON fallback; live provider credentials have not been tested.
+
+Search queries normalize Unicode compatibility forms before cache lookup, reject ASCII control characters and bidirectional text override controls, and remain limited to 140 characters. Only GET health probes are accepted. These safeguards are backend-only; GitHub Pages cannot enforce them without a separately deployed API.
