@@ -38,7 +38,7 @@ Previous example: `GET /api/search?q=running%20shoes` returns `{query,offers:[{t
 - The static GitHub Pages site does **not** perform automatic price checks, price history collection, closed-browser notifications, or background restock monitoring. A separately deployed backend and durable storage are required for those capabilities.
 - Configure `SEARCHAPI_KEY` only in your backend hosting environment; never commit credentials or expose them in client-side JavaScript.
 
-## Local watchlist targets and manual observations (development PR)
+## Local watchlist targets and manual observations
 
 The homepage watchlist now supports optional **target prices**, a short per-product **price history**, and a **Check price** action. The check uses the separately configured SearchApi.io proxy, searches the product title, and **updates only when a returned offer has the exact normalized HTTPS product URL** (common tracking parameters are ignored). A missing match does not change the stored price or availability. These are observations of provider results, **not guarantees** of live inventory or comparable products.
 
@@ -55,3 +55,7 @@ Tests: `cd shopping-api && npm test` runs offline Node tests for targets, URL sa
 The browser-local watchlist now supports instant text search across saved titles, retailer names, and saved queries; filters for saved products, searches, target prices, target hits, confirmed out-of-stock items, and never-checked entries; and sorting by name or observed price within currency groups. Products without an observed price sort last. The **Clear filters** button restores the full list. Filtering and sorting never modify saved data, and edit/check/remove actions still target the correct original saved item.
 
 Target-price and stock filters use the **last locally recorded observation**, not live retailer data. No new background monitoring, provider credentials, or push notifications are implied.
+
+## Observed-price sparklines (October 25 update)
+
+Saved products with at least two valid price observations display a compact, accessible line chart. The horizontal axis reflects observation timestamps; the vertical axis reflects the recorded price range. Flat prices draw a flat line, and malformed observations are ignored. The chart displays **only** prices saved in this browser (initial saves and manual checks); it does not infer missing historical prices or represent live background tracking. The watchlist also labels the time of the most recent manual check when available. Charts and labels do not change the watchlist storage schema.
