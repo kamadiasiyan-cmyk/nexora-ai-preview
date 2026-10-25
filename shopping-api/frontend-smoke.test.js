@@ -113,3 +113,15 @@ test('watchlist renders real history sparklines and identifies manual check time
  assert.match(html,/Last manual check:/);
  assert.match(html,/Number\.isFinite\(Date\.parse\(x\.lastChecked\)\)/);
 });
+
+test('local CSV exports and activity filters are present without adding backend claims',()=>{
+ for(const id of ['exportHistoryCsv','exportAlertsCsv','alertFilterQuery','alertFilterType','alertShown']){
+   assert.equal([...html.matchAll(new RegExp('id="'+id+'"','g'))].length,1,id+' must be unique');
+ }
+ assert.match(html,/W\.historyCsv\(saved,history\)/);
+ assert.match(html,/W\.alertsCsv\(alerts\)/);
+ assert.match(html,/W\.browseAlerts\(alerts/);
+ assert.match(html,/No activity matches these filters/);
+ assert.match(html,/text\/csv;charset=utf-8/);
+ assert.match(html,/no background alerts or push notifications/);
+});
