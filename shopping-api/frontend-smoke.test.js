@@ -104,3 +104,12 @@ test('watchlist browsing controls are unique, labelled and keep stable saved ind
  assert.match(html,/No saved items match these filters/);
  assert.match(html,/id="watchShown"[^>]*aria-live="polite"/);
 });
+
+
+test('watchlist renders real history sparklines and identifies manual check timestamps',()=>{
+ assert.match(html,/W\.sparklinePoints\(rows\)/);
+ assert.match(html,/class="price-sparkline"/);
+ assert.match(html,/role="img" aria-label="Observed price history for/);
+ assert.match(html,/Last manual check:/);
+ assert.match(html,/Number\.isFinite\(Date\.parse\(x\.lastChecked\)\)/);
+});

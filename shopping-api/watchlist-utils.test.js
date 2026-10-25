@@ -142,3 +142,18 @@ test('watchlist sorting groups currencies, keeps unpriced last and preserves act
  assert.deepEqual(w.browseItems(items,'','all','price-high').map(x=>x.index),[1,0,2,4,3]);
  assert.deepEqual(w.browseItems(items,'','all','recent').map(x=>x.index),[0,1,2,3,4]);
 });
+
+
+test('sparklines show real observations in chronological order without mutating history',()=>{
+ const rows=[{at:30,price:10},{at:10,price:10},{at:20,price:20}];
+ const before=JSON.stringify(rows);
+ assert.equal(w.sparklinePoints(rows),'5,39 80,5 155,39');
+ assert.equal(JSON.stringify(rows),before);
+});
+test('sparklines reject insufficient or invalid history and safely render flat prices',()=>{
+ assert.equal(w.sparklinePoints([]),null);
+ assert.equal(w.sparklinePoints([{at:1,price:10}]),null);
+ assert.equal(w.sparklinePoints([{at:1,price:NaN},{at:2,price:10}]),null);
+ assert.equal(w.sparklinePoints([{at:5,price:8},{at:5,price:8}]),'5,22 155,22');
+ assert.equal(w.sparklinePoints([{at:1,price:0},{at:2,price:100}],40,20),'5,15 35,5');
+});
