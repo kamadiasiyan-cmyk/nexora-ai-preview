@@ -109,3 +109,36 @@ test('manual activity rejects unsupported currencies and malformed events',()=>{
  assert.deepEqual(w.recordAlerts([], {title:'Laptop',currency:'USD'}, {dropped:true},NaN,100),[]);
  assert.deepEqual(w.recordAlerts([], {title:'Laptop',currency:'USD'}, {dropped:true},20,-1),[]);
 });
+
+test('watchlist browsing searches titles, stores and saved queries without changing saved order',()=>{
+ const items=[{title:'Camera',merchant:'PhotoMart',price:100,url:'https://store.example/camera'},{title:'Running shoes',mode:'web',query:'sneaker reviews'},{title:'Headphones',merchant:'Audio Store',price:60,url:'https://store.example/headphones'}];
+ const snapshot=JSON.stringify(items);
+ assert.deepEqual(w.browseItems(items,'photomart').map(x=>x.index),[0]);
+ assert.deepEqual(w.browseItems(items,'SNEAKER').map(x=>x.index),[1]);
+ assert.deepEqual(w.browseItems(items,'store').map(x=>x.index),[2]);
+ assert.deepEqual(w.browseItems(items,'').map(x=>x.index),[0,1,2]);
+ assert.equal(JSON.stringify(items),snapshot);
+});
+test('watchlist status filters distinguish products, searches, targets, restocks and unchecked',()=>{
+ const items=[
+  {title:'Camera',url:'https://store.example/camera',price:80,targetPrice:90,inStock:false,lastChecked:'2026-10-24'},
+  {title:'Web query',mode:'web'},
+  {title:'Headphones',url:'https://store.example/headphones',price:110,targetPrice:90,inStock:true}
+ ];
+ for(const [status,expected] of [['products',[0,2]],['searches',[1]],['target',[0,2]],['reached',[0]],['out_of_stock',[0]],['unchecked',[1,2]]]){
+  assert.deepEqual(w.browseItems(items,'',status).map(x=>x.index),expected,status);
+ }
+});
+test('watchlist sorting groups currencies, keeps unpriced last and preserves action indices',()=>{
+ const items=[
+  {title:'Zebra',price:50,currency:'USD'},
+  {title:'Apple',price:5,currency:'EUR'},
+  {title:'Banana',price:10,currency:'USD'},
+  {title:'No price',price:null},
+  {title:'Apricot',price:10,currency:'USD'}
+ ];
+ assert.deepEqual(w.browseItems(items,'','all','name').map(x=>x.index),[1,4,2,3,0]);
+ assert.deepEqual(w.browseItems(items,'','all','price-low').map(x=>x.index),[1,2,4,0,3]);
+ assert.deepEqual(w.browseItems(items,'','all','price-high').map(x=>x.index),[1,0,2,4,3]);
+ assert.deepEqual(w.browseItems(items,'','all','recent').map(x=>x.index),[0,1,2,3,4]);
+});

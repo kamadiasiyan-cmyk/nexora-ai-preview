@@ -67,6 +67,35 @@ function priceRanges(offers){
   }
   return [...groups.values()].sort((a,b)=>a.currency.localeCompare(b.currency));
 }
+/* Pure browser-local watchlist browsing; never changes stored items or their indices. */
+function browseItems(items,query='',filter='all',sort='recent'){
+  const term=String(query??'').trim().toLocaleLowerCase().slice(0,140);
+  const entries=(Array.isArray(items)?items:[]).map((item,index)=>({item,index})).filter(({item})=>{
+    if(!validItem(item))return false;
+    if(term&&![item.title,item.merchant,item.query].some(value=>typeof value==='string'&&value.toLocaleLowerCase().includes(term)))return false;
+    const tracked=price(item.targetPrice)!==null,amount=price(item.price),target=price(item.targetPrice);
+    switch(filter){
+      case 'products':return !!(item.url&&safeUrl(item.url));
+      case 'searches':return !item.url;
+      case 'target':return tracked;
+      case 'reached':return tracked&&amount!==null&&amount<=target;
+      case 'out_of_stock':return item.inStock===false;
+      case 'unchecked':return !item.lastChecked;
+      default:return true;
+    }
+  });
+  if(sort==='name')entries.sort((a,b)=>a.item.title.localeCompare(b.item.title)||a.index-b.index);
+  else if(sort==='price-low'||sort==='price-high'){
+    const direction=sort==='price-low'?1:-1;
+    entries.sort((a,b)=>{
+      const pa=price(a.item.price),pb=price(b.item.price);
+      if(pa===null||pb===null)return pa===null?(pb===null?a.index-b.index:1):-1;
+      const ca=currencyOf(a.item)||'',cb=currencyOf(b.item)||'';
+      return ca.localeCompare(cb)||direction*(pa-pb)||a.index-b.index;
+    });
+  }
+  return entries;
+}
 function mergeItems(current,incoming){
   const result=current.filter(validItem).slice(0,500),seen=new Set(result.map(keyFor));
   for(const item of Array.isArray(incoming)?incoming:[]){if(!validItem(item))continue;const k=keyFor(item);if(!seen.has(k)&&result.length<500){result.push(item);seen.add(k)}}
@@ -112,5 +141,5 @@ function recordAlerts(current,item,event,amount,at=Date.now()){
   return mergeAlerts(current,added);
 }
 
-return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,priceRanges,validAlert,mergeAlerts,loadAlerts,recordAlerts};
+return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,priceRanges,browseItems,validAlert,mergeAlerts,loadAlerts,recordAlerts};
 });
