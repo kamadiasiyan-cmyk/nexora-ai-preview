@@ -157,5 +157,41 @@ function recordAlerts(current,item,event,amount,at=Date.now()){
   return mergeAlerts(current,added);
 }
 
-return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseItems,validAlert,mergeAlerts,loadAlerts,recordAlerts};
+
+/* Portable, browser-local CSV exports. Every cell is quoted and spreadsheet
+   formula prefixes are neutralized to protect people opening exports in Excel. */
+function csvCell(value){
+  let text=String(value??'').replace(/\u0000/g,'');
+  if(/^\s*[=+\-@]/.test(text)||/^[\t\r\n]/.test(text))text="'"+text;
+  return '"'+text.replace(/"/g,'""')+'"';
+}
+function csvRow(cells){return cells.map(csvCell).join(',')+'\r\n'}
+function historyCsv(items,history){
+  let out=csvRow(['Observed at (UTC)','Product','Retailer','Product URL','Currency','Observed price','Stock status']);
+  for(const item of (Array.isArray(items)?items:[]).slice(0,500)){
+    if(!validItem(item))continue;
+    const currency=currencyOf(item);
+    if(!currency)continue;
+    const rows=history&&typeof history==='object'&&Array.isArray(history[keyFor(item)])?history[keyFor(item)]:[];
+    for(const x of rows.slice(-60)){
+      if(!x||!Number.isSafeInteger(x.at)||x.at<=0||x.at>8640000000000000||!validPrice(x.price))continue;
+      if(x.stock!==true&&x.stock!==false&&x.stock!==null)continue;
+      out+=csvRow([new Date(x.at).toISOString(),item.title,item.merchant||'',item.url?safeUrl(item.url)||'':'',currency,x.price,x.stock===true?'In stock':x.stock===false?'Out of stock':'Unknown']);
+    }
+  }
+  return out;
+}
+function alertsCsv(items){
+  let out=csvRow(['Observed at (UTC)','Event','Product','Currency','Observed price']);
+  for(const x of mergeAlerts([],items)){
+    out+=csvRow([new Date(x.at).toISOString(),x.type,x.title,x.currency,x.price]);
+  }
+  return out;
+}
+function browseAlerts(items,query='',type='all'){
+  const term=String(query??'').trim().toLocaleLowerCase().slice(0,140);
+  return mergeAlerts([],items).filter(x=>(type==='all'||x.type===type)&&(!term||x.title.toLocaleLowerCase().includes(term)||x.type.replace(/_/g,' ').includes(term)));
+}
+
+return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseItems,validAlert,mergeAlerts,loadAlerts,recordAlerts,csvCell,historyCsv,alertsCsv,browseAlerts};
 });

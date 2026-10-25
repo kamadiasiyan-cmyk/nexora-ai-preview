@@ -157,3 +157,47 @@ test('sparklines reject insufficient or invalid history and safely render flat p
  assert.equal(w.sparklinePoints([{at:5,price:8},{at:5,price:8}]),'5,22 155,22');
  assert.equal(w.sparklinePoints([{at:1,price:0},{at:2,price:100}],40,20),'5,15 35,5');
 });
+
+
+test('CSV escaping neutralizes spreadsheet formulas and preserves commas and quotes',()=>{
+ assert.equal(w.csvCell('=HYPERLINK("bad")'),'"\'=HYPERLINK(""bad"")"');
+ assert.equal(w.csvCell(' \t+SUM(1,2)'),'"\' \t+SUM(1,2)"');
+ assert.equal(w.csvCell('@cmd'),'"\'@cmd"');
+ assert.equal(w.csvCell('Shop, "West"'),'"Shop, ""West"""');
+ assert.equal(w.csvCell(0),'"0"');
+});
+test('history CSV contains only actual valid observations with UTC dates and stock labels',()=>{
+ const item={title:'=Discount',merchant:'Camera, Inc',url:'https://store.example/p?utm_source=ad&sku=2',currency:'USD'};
+ const key=w.keyFor(item),rows=[{at:1000,price:25,stock:false},{at:2000,price:20,stock:true},{at:3000,price:NaN,stock:true},{at:4000,price:10,stock:'unknown'}];
+ const csv=w.historyCsv([item],{[key]:rows});
+ assert.match(csv,/Observed at \(UTC\)/);
+ assert.match(csv,/"'=?Discount"/);
+ assert.match(csv,/1970-01-01T00:00:01\.000Z/);
+ assert.match(csv,/"Out of stock"/);
+ assert.match(csv,/"In stock"/);
+ assert.match(csv,/https:\/\/store\.example\/p\?sku=2/);
+ assert.doesNotMatch(csv,/utm_source/);
+ assert.equal(csv.trimEnd().split('\r\n').length,3);
+});
+test('activity CSV excludes malformed entries and exports only normalized local events',()=>{
+ const item={title:'Headphones',currency:'EUR'};
+ const good=w.recordAlerts([],item,{dropped:true,restocked:true},49,1000);
+ const csv=w.alertsCsv([...good,{...good[0],price:-3}]);
+ assert.match(csv,/price_drop/);
+ assert.match(csv,/restock/);
+ assert.match(csv,/EUR/);
+ assert.equal(csv.trimEnd().split('\r\n').length,3);
+ assert.equal(w.alertsCsv([]).trimEnd().split('\r\n').length,1);
+});
+test('activity filters search product names and event labels without changing stored events',()=>{
+ const events=[
+  ...w.recordAlerts([],{title:'Laptop'},{dropped:true,restocked:true},100,2000),
+  ...w.recordAlerts([],{title:'Shoes'},{reached:true},50,1000)
+ ];
+ const before=JSON.stringify(events);
+ assert.equal(w.browseAlerts(events,'lap').length,2);
+ assert.deepEqual(w.browseAlerts(events,'','restock').map(x=>x.title),['Laptop']);
+ assert.deepEqual(w.browseAlerts(events,'target reached').map(x=>x.title),['Shoes']);
+ assert.equal(w.browseAlerts(events,'missing').length,0);
+ assert.equal(JSON.stringify(events),before);
+});
