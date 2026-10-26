@@ -85,3 +85,10 @@ Search queries normalize Unicode compatibility forms before cache lookup, reject
 The optional Node backend now has a **per-process daily upstream request budget** (default **200 new SearchApi.io requests per UTC day**). Set `MAX_DAILY_PROVIDER_REQUESTS` on the backend host to an integer from 0 to 99999; `0` disables new upstream calls, and invalid values fall back to 200. Once exhausted, new uncached queries return HTTP 429 with a `Retry-After` header showing seconds until the next UTC midnight. Cached responses and concurrent requests for an already in-flight query do not consume additional budget. Failed provider attempts still count.
 
 **This is a guardrail, not a billing guarantee.** The counter lives in process memory and resets on restart; multiple replicas have independent counters. Production requires durable account quotas, upstream spending caps, authentication and abuse prevention. The frontend does not gain live search without separately deployed backend hosting and credentials.
+
+
+## Browser-only website result filters (October 26 update)
+
+When a separately hosted search backend returns website results, WatchTower now supports local keyword filtering (title, snippet, or canonical domain), exact website-domain selection, and title/domain sorting. The website toolbar replaces shopping-only filters in website mode. Result counts distinguish filtered matches from the provider-returned set. Filters never trigger additional SearchApi.io calls, and the list resets when a new search starts. Invalid or duplicate destination URLs are excluded, domains are derived from validated HTTPS links instead of potentially misleading provider display labels, and result text remains HTML-escaped.
+
+These controls work **only on website results already returned** by a configured backend. They do not enable general web search on GitHub Pages alone, do not create background checks, and do not modify browser-local watchlists, history, or activity. No credentials are stored in the public frontend.
