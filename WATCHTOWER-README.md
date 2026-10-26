@@ -30,6 +30,12 @@ Previous example: `GET /api/search?q=running%20shoes` returns `{query,offers:[{t
 - API is an MVP: add persistent rate limits, authentication, usage quotas, monitoring, error reporting, and abuse prevention before commercial deployment.
 - Previous NEXORA demo files are still in this repository; the homepage was replaced but other pages were not deleted. The private NEXORA repository was not modified.
 
+## Search-result retailer and keyword filters (October 26 update)
+
+When a separately hosted search backend returns product offers, WatchTower now lets you filter the displayed results by retailer, search within returned product titles or retailer names, and clear all product filters. The retailer menu is built only from offers in the current API response; switching searches resets filters so an old merchant selection cannot hide new results. These filters operate locally on returned offers and do **not** trigger additional paid SearchApi.io requests. In-stock filtering still requires explicit confirmation, and the maximum-price filter still applies only to USD offers; prices in different currencies are never numerically compared without conversion. Filtering does not alter saved watchlists or price history.
+
+The public GitHub Pages site continues to offer retailer search links without a backend, but does not aggregate live prices on its own. No automatic background checks, push alerts, or cross-device synchronization were added.
+
 ## Search quality, privacy, and local watchlists
 
 - The shopping API now rejects malformed prices, non-HTTPS retailer links, credential-bearing URLs, and unsupported search modes. It removes common tracking parameters before deduplicating results. Price comparisons are only as current as SearchApi.io's response.
