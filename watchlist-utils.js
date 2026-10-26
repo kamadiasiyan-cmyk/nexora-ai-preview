@@ -83,6 +83,30 @@ function priceRanges(offers){
   }
   return [...groups.values()].sort((a,b)=>a.currency.localeCompare(b.currency));
 }
+/* Pure filtering of provider-returned offers. Currency groups are never converted
+   or compared numerically against each other. Does not mutate source offers. */
+function browseOffers(items,options={}){
+  const {stockOnly=false,maxPrice='',merchant='',query='',sort='price'}=options;
+  const term=String(query??'').trim().toLocaleLowerCase().slice(0,140);
+  const selectedMerchant=String(merchant??'').toLocaleLowerCase();
+  const hasMax=maxPrice!==''&&maxPrice!==null&&maxPrice!==undefined;
+  const ceiling=hasMax?price(maxPrice):null;
+  if(hasMax&&ceiling===null)return [];
+  const filtered=(Array.isArray(items)?items:[]).filter(item=>{
+    if(!item||typeof item!=='object'||!safeUrl(item.url)||price(item.price)===null||currencyOf(item)===null)return false;
+    if(stockOnly&&item.inStock!==true)return false;
+    if(selectedMerchant&&String(item.merchant||'').toLocaleLowerCase()!==selectedMerchant)return false;
+    if(term&&![item.title,item.merchant].some(value=>typeof value==='string'&&value.toLocaleLowerCase().includes(term)))return false;
+    if(hasMax&&(currencyOf(item)!=='USD'||price(item.price)>ceiling))return false;
+    return true;
+  });
+  const byCurrency=(a,b)=>currencyOf(a).localeCompare(currencyOf(b));
+  if(sort==='high')filtered.sort((a,b)=>byCurrency(a,b)||price(b.price)-price(a.price));
+  else if(sort==='store')filtered.sort((a,b)=>String(a.merchant||'').localeCompare(String(b.merchant||'')));
+  else filtered.sort((a,b)=>byCurrency(a,b)||price(a.price)-price(b.price));
+  return filtered;
+}
+
 /* Pure browser-local watchlist browsing; never changes stored items or their indices. */
 function browseItems(items,query='',filter='all',sort='recent'){
   const term=String(query??'').trim().toLocaleLowerCase().slice(0,140);
@@ -193,5 +217,5 @@ function browseAlerts(items,query='',type='all'){
   return mergeAlerts([],items).filter(x=>(type==='all'||x.type===type)&&(!term||x.title.toLocaleLowerCase().includes(term)||x.type.replace(/_/g,' ').includes(term)));
 }
 
-return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseItems,validAlert,mergeAlerts,loadAlerts,recordAlerts,csvCell,historyCsv,alertsCsv,browseAlerts};
+return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseOffers,browseItems,validAlert,mergeAlerts,loadAlerts,recordAlerts,csvCell,historyCsv,alertsCsv,browseAlerts};
 });
