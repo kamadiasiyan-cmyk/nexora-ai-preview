@@ -144,3 +144,11 @@ test('manual price checks discard pending results after API connection changes',
  assert.match(html, /api=value;searchVersion\+\+;connectionVersion\+\+/);
  assert.match(html, /\$\('clearApi'\)\.onclick=\(\)=>\{searchVersion\+\+;connectionVersion\+\+/);
 });
+
+test('saved-item and review-due CSV buttons use browser-local snapshots',()=>{
+ for(const id of ['exportWatchCsv','exportDueCsv'])assert.equal([...html.matchAll(new RegExp('id="'+id+'"','g'))].length,1);
+ assert.ok(html.includes('W.watchlistCsv(saved,history)'));
+ assert.ok(html.includes('W.watchlistCsv(saved,history,{dueOnly:true})'));
+ assert.ok(html.includes('no live prices were fetched'));
+ assert.ok(html.includes('no automatic checks were performed'));
+});
