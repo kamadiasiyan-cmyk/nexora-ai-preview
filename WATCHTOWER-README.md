@@ -92,3 +92,12 @@ The optional Node backend now has a **per-process daily upstream request budget*
 When a separately hosted search backend returns website results, WatchTower now supports local keyword filtering (title, snippet, or canonical domain), exact website-domain selection, and title/domain sorting. The website toolbar replaces shopping-only filters in website mode. Result counts distinguish filtered matches from the provider-returned set. Filters never trigger additional SearchApi.io calls, and the list resets when a new search starts. Invalid or duplicate destination URLs are excluded, domains are derived from validated HTTPS links instead of potentially misleading provider display labels, and result text remains HTML-escaped.
 
 These controls work **only on website results already returned** by a configured backend. They do not enable general web search on GitHub Pages alone, do not create background checks, and do not modify browser-local watchlists, history, or activity. No credentials are stored in the public frontend.
+
+
+## Manual review queue and connection-safe checks (October 26 update)
+
+The watchlist now includes **Review due**, a filter for saved product links that have **never been manually verified** or whose last successful manual check was **at least seven days ago**. The **Needs checking first** sort places never-checked products first, then the oldest verified checks, then recent checks; saved searches appear last because they have no individual product URL to verify. The watchlist displays the number of products due for review and labels overdue product rows. Malformed and future check timestamps are treated as unverified, not as fresh prices.
+
+**Review due is a local reminder, not an automated scheduler.** It does not contact retailers, consume SearchApi.io requests, run in the background, or send notifications. Checking a product still requires clicking **Check price** and having a separately hosted, configured backend. Counts are based on the browser's saved timestamps, not independent confirmation of a retailer's current price or stock.
+
+Manual price-check responses are now discarded if the user changes or clears the configured API origin while a check is pending. This prevents an old backend response from updating saved prices or activity after switching connections. Existing watchlist/history/activity storage keys and backup formats remain unchanged; no credentials are added to the frontend.

@@ -201,3 +201,38 @@ test('activity filters search product names and event labels without changing st
  assert.equal(w.browseAlerts(events,'missing').length,0);
  assert.equal(JSON.stringify(events),before);
 });
+
+test('manual review freshness uses verified checks and seven-day boundary',()=>{
+ const now=Date.parse('2026-10-26T12:00:00Z');
+ const product=lastChecked=>({title:'Camera',url:'https://shop.example/camera',lastChecked});
+ assert.equal(w.checkFreshness(product(undefined),now),'never');
+ assert.equal(w.checkFreshness(product('bad-date'),now),'never');
+ assert.equal(w.checkFreshness(product('2026-10-27T12:00:00Z'),now),'never');
+ assert.equal(w.checkFreshness(product('2026-10-19T12:00:00Z'),now),'stale');
+ assert.equal(w.checkFreshness(product('2026-10-19T12:00:01Z'),now),'recent');
+ assert.equal(w.checkFreshness({title:'Saved search',mode:'web'},now),'not_applicable');
+});
+test('manual review summary excludes saved searches and does not mutate items',()=>{
+ const now=Date.parse('2026-10-26T12:00:00Z');
+ const items=[{title:'A',url:'https://shop.example/a'},{title:'B',url:'https://shop.example/b',lastChecked:'2026-10-10T00:00:00Z'},{title:'C',url:'https://shop.example/c',lastChecked:'2026-10-25T00:00:00Z'},{title:'Search',mode:'web'}];
+ const before=JSON.stringify(items);
+ assert.deepEqual(w.reviewSummary(items,now),{products:3,never:1,stale:1,recent:1,due:2});
+ assert.equal(JSON.stringify(items),before);
+});
+test('due filter includes never checked and stale products but not saved searches',()=>{
+ const now=Date.parse('2026-10-26T12:00:00Z');
+ const items=[{title:'Fresh',url:'https://shop.example/f',lastChecked:'2026-10-25T00:00:00Z'},{title:'Search',mode:'products'},{title:'Never',url:'https://shop.example/n'},{title:'Old',url:'https://shop.example/o',lastChecked:'2026-10-01T00:00:00Z'}];
+ assert.deepEqual(w.browseItems(items,'','due','recent',now).map(x=>x.index),[2,3]);
+ assert.deepEqual(w.browseItems(items,'Old','due','recent',now).map(x=>x.index),[3]);
+});
+test('manual review sorting prioritizes unverified and oldest checks with stable indices',()=>{
+ const now=Date.parse('2026-10-26T12:00:00Z');
+ const items=[{title:'Fresh',url:'https://shop.example/f',lastChecked:'2026-10-25T00:00:00Z'},{title:'Old',url:'https://shop.example/o',lastChecked:'2026-10-01T00:00:00Z'},{title:'Search',mode:'web'},{title:'Never',url:'https://shop.example/n'},{title:'Older',url:'https://shop.example/p',lastChecked:'2026-09-01T00:00:00Z'}];
+ assert.deepEqual(w.browseItems(items,'','all','check-oldest',now).map(x=>x.index),[3,4,1,0,2]);
+});
+test('manual review handles malformed records and invalid clocks safely',()=>{
+ const now=Date.parse('2026-10-26T12:00:00Z');
+ assert.deepEqual(w.reviewSummary(null,now),{products:0,never:0,stale:0,recent:0,due:0});
+ assert.equal(w.checkFreshness({title:'Bad URL',url:'javascript:alert(1)'},now),'not_applicable');
+ assert.equal(w.checkFreshness({title:'Camera',url:'https://shop.example/c',lastChecked:'2026-10-25T00:00:00Z'},NaN),'never');
+});
