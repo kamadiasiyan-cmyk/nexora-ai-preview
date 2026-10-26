@@ -125,3 +125,22 @@ test('local CSV exports and activity filters are present without adding backend 
  assert.match(html,/text\/csv;charset=utf-8/);
  assert.match(html,/no background alerts or push notifications/);
 });
+
+test('manual review queue controls and counts are accessible and browser-local',()=>{
+ assert.equal([...html.matchAll(/id="reviewDue"/g)].length,1);
+ assert.match(html, /<option value="due">Due for manual review/);
+ assert.match(html, /<option value="check-oldest">Needs checking first/);
+ assert.match(html, /W\.reviewSummary\(saved\)/);
+ assert.match(html, /W\.checkFreshness\(x\)/);
+ assert.match(html, /review\.due/);
+ assert.match(html, /\$\('watchFilterStatus'\)\.value='due'/);
+ assert.match(html, /\$\('watchSort'\)\.value='check-oldest'/);
+ assert.match(html, /Manual checks only; no background monitoring/);
+});
+test('manual price checks discard pending results after API connection changes',()=>{
+ assert.match(html, /connectionVersion=0/);
+ assert.match(html, /const checkVersion=connectionVersion/);
+ assert.match(html, /if\(checkVersion!==connectionVersion\)return announce/);
+ assert.match(html, /api=value;searchVersion\+\+;connectionVersion\+\+/);
+ assert.match(html, /\$\('clearApi'\)\.onclick=\(\)=>\{searchVersion\+\+;connectionVersion\+\+/);
+});
