@@ -30,6 +30,8 @@ jobs:
           node --check shopping-api/offer-utils.js
           node --check shopping-api/comparison-utils.js
           node --check shopping-api/frontend-smoke.test.js
+          node --check shopping-api/web-browse.test.js
+          node --check watchlist-utils.js
       - name: Automated tests (mocked provider, no API keys)
         working-directory: shopping-api
         run: npm test
