@@ -24,6 +24,9 @@ jobs:
       - name: Syntax checks
         run: |
           node --check shopping-api/server.js
+          node --check shopping-api/usage-budget.js
+          node --check shopping-api/usage-budget.test.js
+          node --check shopping-api/usage-budget.integration.test.js
           node --check shopping-api/offer-utils.js
           node --check shopping-api/comparison-utils.js
           node --check shopping-api/frontend-smoke.test.js

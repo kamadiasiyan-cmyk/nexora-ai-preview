@@ -73,3 +73,9 @@ CSV cells are quoted and potentially dangerous spreadsheet formula prefixes are 
 The optional Node search proxy now reads streamed SearchApi.io JSON with a **2 MiB response limit**, including early rejection when the upstream `Content-Length` exceeds the limit. Oversized or malformed upstream responses produce a generic 502 error; provider details and credentials are not returned to the browser. The limit protects memory on small hosts but does not replace hosting quotas or authentication. Existing mocked-provider tests use a JSON fallback; live provider credentials have not been tested.
 
 Search queries normalize Unicode compatibility forms before cache lookup, reject ASCII control characters and bidirectional text override controls, and remain limited to 140 characters. Only GET health probes are accepted. These safeguards are backend-only; GitHub Pages cannot enforce them without a separately deployed API.
+
+## Daily provider request safety (October 26 update)
+
+The optional Node backend now has a **per-process daily upstream request budget** (default **200 new SearchApi.io requests per UTC day**). Set `MAX_DAILY_PROVIDER_REQUESTS` on the backend host to an integer from 0 to 99999; `0` disables new upstream calls, and invalid values fall back to 200. Once exhausted, new uncached queries return HTTP 429 with a `Retry-After` header showing seconds until the next UTC midnight. Cached responses and concurrent requests for an already in-flight query do not consume additional budget. Failed provider attempts still count.
+
+**This is a guardrail, not a billing guarantee.** The counter lives in process memory and resets on restart; multiple replicas have independent counters. Production requires durable account quotas, upstream spending caps, authentication and abuse prevention. The frontend does not gain live search without separately deployed backend hosting and credentials.

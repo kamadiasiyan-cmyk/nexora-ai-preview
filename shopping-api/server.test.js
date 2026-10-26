@@ -80,3 +80,11 @@ test('parses bounded streamed website search results without a JSON fallback',as
     assert.equal(r.body.comparison,null);
   }finally{global.fetch=original}
 });
+
+test('server guards new upstream requests with a finite daily provider budget',()=>{
+ const fs=require('node:fs'),path=require('node:path');
+ const source=fs.readFileSync(path.join(__dirname,'server.js'),'utf8');
+ assert.match(source,/providerBudget[.]take[(][)]/);
+ assert.match(source,/if[(]!providerBudget[.]take[(][)][)]return json[(]res,429/);
+ assert.match(source,/retry-after/);
+});

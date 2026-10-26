@@ -10,6 +10,8 @@ const MAX_PROVIDER_CONCURRENCY=8;
 let requestCount=0;
 const {cleanUrl,parsePrice,stockState,normalizeOffer:normalize,normalizeOffers,normalizeWebResults}=require('./offer-utils');
 const {summarizeOffers}=require('./comparison-utils');
+const {createDailyBudget}=require('./usage-budget');
+const providerBudget=createDailyBudget(process.env.MAX_DAILY_PROVIDER_REQUESTS);
 const MAX_PROVIDER_BYTES=2*1024*1024;
 // Read upstream responses with a hard cap to avoid unbounded memory use from a broken provider.
 // The json() fallback supports simple test doubles; real Node fetch responses expose a stream.
@@ -32,7 +34,7 @@ async function readProviderJson(response){
     if(!completed)try{await reader.cancel()}catch{}
   }
 }
-const json=(res,code,obj,origin)=>{const headers={'content-type':'application/json; charset=utf-8','cache-control':'no-store','vary':'Origin','x-content-type-options':'nosniff'};if(origin)headers['access-control-allow-origin']=origin;res.writeHead(code,headers);res.end(JSON.stringify(obj))};
+const json=(res,code,obj,origin,extraHeaders={})=>{const headers={'content-type':'application/json; charset=utf-8','cache-control':'no-store','vary':'Origin','x-content-type-options':'nosniff'};if(origin)headers['access-control-allow-origin']=origin;Object.assign(headers,extraHeaders);res.writeHead(code,headers);res.end(JSON.stringify(obj))};
 
 // CORS is not authentication: server-side quotas and private hosting remain essential.
 const server=http.createServer(async(req,res)=>{const origin=req.headers.origin||'';if(req.method==='GET'&&req.url==='/health'&&!origin)return json(res,200,{ok:true,configured:!!SEARCHAPI_KEY},null);const allowed=origin===ALLOWED_ORIGIN||(!origin&&process.env.ALLOW_NO_ORIGIN==='1');if(req.method==='OPTIONS'){if(!allowed)return json(res,403,{error:'Origin not allowed'},null);const headers={'access-control-allow-methods':'GET, OPTIONS','access-control-allow-headers':'Content-Type','vary':'Origin'};if(origin)headers['access-control-allow-origin']=origin;res.writeHead(204,headers);return res.end()}if(!allowed)return json(res,403,{error:'Origin not allowed'},null);const corsOrigin=origin||null;
@@ -49,6 +51,8 @@ try{
   let work=pending.get(key);
   if(!work){
     if(pending.size>=MAX_PROVIDER_CONCURRENCY)return json(res,503,{error:'Search service busy; retry shortly'},corsOrigin);
+    // Cached and coalesced requests do not spend the daily upstream budget.
+    if(!providerBudget.take())return json(res,429,{error:'Daily search provider budget reached. Try again after 00:00 UTC.'},corsOrigin,{'retry-after':String(providerBudget.snapshot().retryAfterSeconds)});
     work=(async()=>{
       const target=new URL('https://www.searchapi.io/api/v1/search');
       target.searchParams.set('engine',mode==='web'?'google':'google_shopping');
