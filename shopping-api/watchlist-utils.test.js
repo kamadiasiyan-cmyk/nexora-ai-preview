@@ -236,3 +236,36 @@ test('manual review handles malformed records and invalid clocks safely',()=>{
  assert.equal(w.checkFreshness({title:'Bad URL',url:'javascript:alert(1)'},now),'not_applicable');
  assert.equal(w.checkFreshness({title:'Camera',url:'https://shop.example/c',lastChecked:'2026-10-25T00:00:00Z'},NaN),'never');
 });
+
+test('watchlist CSV exports saved product and search snapshots with real history',()=>{
+ const product={title:'Camera',merchant:'Photo Store',url:'https://store.example/p?sku=3&utm_source=ad',price:70,targetPrice:60,currency:'EUR',inStock:false,lastChecked:'2026-10-20T00:00:00Z'};
+ const query={title:'Lens search',mode:'web'};
+ const csv=w.watchlistCsv([product,query],{[w.keyFor(product)]:[{at:1,price:90},{at:2,price:70}]},{now:Date.parse('2026-10-26T00:00:00Z')});
+ assert.ok(csv.includes('Last manual check'));
+ assert.ok(csv.includes('store.example/p?sku=3'));
+ assert.ok(!csv.includes('utm_source'));
+ assert.ok(csv.includes('"EUR","70","60","Out of stock"'));
+ assert.ok(csv.includes('"Checked recently","70","90"'));
+ assert.ok(csv.includes('"Saved search"'));
+ assert.equal(csv.trimEnd().split('\r\n').length,3);
+});
+test('review-due CSV excludes recent products and saved searches without mutations',()=>{
+ const now=Date.parse('2026-10-26T12:00:00Z');
+ const items=[{title:'Recent',url:'https://shop.test/recent',lastChecked:'2026-10-25T00:00:00Z'},
+ {title:'Never',url:'https://shop.test/never'},{title:'Old',url:'https://shop.test/old',lastChecked:'2026-10-01T00:00:00Z'},
+ {title:'Future',url:'https://shop.test/future',lastChecked:'2026-10-27T00:00:00Z'},{title:'Search',mode:'web'}];
+ const before=JSON.stringify(items),csv=w.watchlistCsv(items,{}, {dueOnly:true,now});
+ assert.equal(csv.trimEnd().split('\r\n').length,4);
+ assert.ok(csv.includes('Never checked'));assert.ok(csv.includes('Review due'));
+ assert.ok(!csv.includes('"Recent"'));assert.ok(!csv.includes('"Search"'));
+ assert.equal(JSON.stringify(items),before);
+});
+test('watchlist CSV omits unsafe links, malformed dates and unrecorded price history',()=>{
+ const csv=w.watchlistCsv([{title:'Unsafe',url:'javascript:alert(1)'},{title:'Valid',url:'https://shop.test/p',price:-1,lastChecked:'bad-date'}],{});
+ assert.ok(!csv.includes('Unsafe'));assert.ok(!csv.includes('bad-date'));
+ assert.ok(csv.includes('"Valid"'));
+ assert.ok(csv.includes('"Never checked","",""'));
+});
+test('CSV spreadsheet safety handles invisible Unicode prefixes before formulas',()=>{
+ for(const s of ['\uFEFF=1+2','\u200B@SUM(1)','\u2060-2+3','\u200C+4'])assert.equal(w.csvCell(s).charCodeAt(1),39);
+});

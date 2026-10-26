@@ -243,7 +243,7 @@ function recordAlerts(current,item,event,amount,at=Date.now()){
    formula prefixes are neutralized to protect people opening exports in Excel. */
 function csvCell(value){
   let text=String(value??'').replace(/\u0000/g,'');
-  if(/^\s*[=+\-@]/.test(text)||/^[\t\r\n]/.test(text))text="'"+text;
+  if(/^[\s\uFEFF\u200B\u200C\u200D\u2060]*[=+\-@]/u.test(text)||/^[\t\r\n]/.test(text))text="'"+text;
   return '"'+text.replace(/"/g,'""')+'"';
 }
 function csvRow(cells){return cells.map(csvCell).join(',')+'\r\n'}
@@ -262,6 +262,29 @@ function historyCsv(items,history){
   }
   return out;
 }
+
+/* Portable browser-local snapshots: no network requests or live price claims. */
+function watchlistCsv(items,history,options={}){
+  const {dueOnly=false,now=Date.now()}=options;
+  let out=csvRow(['Type','Title','Retailer','Product URL','Currency','Last saved price','Target price','Stock status','Last manual check (UTC)','Manual review status','Lowest observed price','Highest observed price']);
+  for(const item of (Array.isArray(items)?items:[]).slice(0,500)){
+    if(!validItem(item))continue;
+    const state=checkFreshness(item,now);
+    if(dueOnly&&state!=='never'&&state!=='stale')continue;
+    const product=state!=='not_applicable',currency=currencyOf(item);
+    const rows=product&&history&&typeof history==='object'?history[keyFor(item)]:null;
+    const stats=historyStats(rows);
+    const checked=typeof item.lastChecked==='string'?Date.parse(item.lastChecked):NaN;
+    const checkedAt=product&&Number.isFinite(now)&&Number.isFinite(checked)&&checked>0&&checked<=now&&checked<=8640000000000000?new Date(checked).toISOString():'';
+    const status=state==='never'?'Never checked':state==='stale'?'Review due':state==='recent'?'Checked recently':'Saved search';
+    const current=price(item.price),target=price(item.targetPrice);
+    out+=csvRow([product?'Product':'Saved search',item.title,item.merchant||'',product?safeUrl(item.url)||'':'',currency||'',
+      current===null?'':current,target===null?'':target,
+      item.inStock===true?'In stock':item.inStock===false?'Out of stock':'Unknown',
+      checkedAt,status,stats?stats.lowest:'',stats?stats.highest:'']);
+  }
+  return out;
+}
 function alertsCsv(items){
   let out=csvRow(['Observed at (UTC)','Event','Product','Currency','Observed price']);
   for(const x of mergeAlerts([],items)){
@@ -274,5 +297,5 @@ function browseAlerts(items,query='',type='all'){
   return mergeAlerts([],items).filter(x=>(type==='all'||x.type===type)&&(!term||x.title.toLocaleLowerCase().includes(term)||x.type.replace(/_/g,' ').includes(term)));
 }
 
-return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseOffers,webDomain,browseWebResults,browseItems,checkFreshness,reviewSummary,validAlert,mergeAlerts,loadAlerts,recordAlerts,csvCell,historyCsv,alertsCsv,browseAlerts};
+return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseOffers,webDomain,browseWebResults,browseItems,checkFreshness,reviewSummary,validAlert,mergeAlerts,loadAlerts,recordAlerts,csvCell,historyCsv,watchlistCsv,alertsCsv,browseAlerts};
 });

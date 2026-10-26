@@ -101,3 +101,9 @@ The watchlist now includes **Review due**, a filter for saved product links that
 **Review due is a local reminder, not an automated scheduler.** It does not contact retailers, consume SearchApi.io requests, run in the background, or send notifications. Checking a product still requires clicking **Check price** and having a separately hosted, configured backend. Counts are based on the browser's saved timestamps, not independent confirmation of a retailer's current price or stock.
 
 Manual price-check responses are now discarded if the user changes or clears the configured API origin while a check is pending. This prevents an old backend response from updating saved prices or activity after switching connections. Existing watchlist/history/activity storage keys and backup formats remain unchanged; no credentials are added to the frontend.
+
+## Saved-item and manual review CSV exports (October 26 update)
+
+The browser watchlist now has **Watchlist CSV** (all valid saved products and searches) and **Review due CSV** (product links never manually checked or last checked at least seven days ago). Both include browser-local snapshots of saved prices, targets, currencies, stock status, last check, and observed minimum/maximum when recorded. Neither makes a SearchApi.io request or provides live prices, automatic monitoring, or notifications. The original JSON backup remains the lossless import/export format.
+
+CSV output removes URL tracking parameters, rejects unsafe product links, excludes malformed dates/prices, and neutralizes spreadsheet formula prefixes including invisible Unicode formatting characters. CSV is for review and sharing, not backup reimport.
