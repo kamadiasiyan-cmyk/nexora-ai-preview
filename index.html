@@ -31,7 +31,7 @@ function renderSaved(){
   $('reviewDue').textContent='Review due ('+review.due+')';
   const tracked=saved.filter(x=>W.price(x.targetPrice)!==null).length;
   const reached=saved.filter(x=>W.price(x.targetPrice)!==null&&W.price(x.price)!==null&&W.price(x.price)<=W.price(x.targetPrice)).length;
-  $('watchStats').textContent=tracked+' target prices set · '+reached+' currently at or below target · '+review.due+' products due for manual review (never checked or 7+ days old) · No background monitoring.';
+  $('watchStats').textContent=tracked+' target prices set · '+reached+' currently at or below target · '+review.due+' products due for manual review (never checked or 7+ days old) · Manual checks only; no background monitoring.';
   $('watchItems').className=visible.length?'':'empty';
   $('watchItems').innerHTML=visible.length?visible.map(({item:x,index:i})=>{
     const rows=history[W.keyFor(x)]||[],last=rows.slice(-4).map(v=>money(v.price,x.currency||'USD')).join(' → '),stats=W.historyStats(rows);
