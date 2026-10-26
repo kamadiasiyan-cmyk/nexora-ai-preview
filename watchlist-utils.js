@@ -134,8 +134,27 @@ function browseWebResults(items,options={}){
   return results.slice(0,30);
 }
 
+/* A review queue is a reminder for MANUAL checks, not background monitoring.
+   Future, malformed, and missing timestamps are unverified, never fresh. */
+function checkFreshness(item,now=Date.now(),maxAgeDays=7){
+  if(!validItem(item)||!item.url||!safeUrl(item.url))return 'not_applicable';
+  const at=typeof item.lastChecked==='string'?Date.parse(item.lastChecked):NaN;
+  if(!Number.isFinite(now)||now<=0||!Number.isFinite(at)||at<=0||at>now)return 'never';
+  const age=Number.isFinite(maxAgeDays)&&maxAgeDays>0?maxAgeDays*86400000:7*86400000;
+  return now-at>=age?'stale':'recent';
+}
+function reviewSummary(items,now=Date.now()){
+  const summary={products:0,never:0,stale:0,recent:0,due:0};
+  for(const item of Array.isArray(items)?items:[]){
+    const state=checkFreshness(item,now);
+    if(state==='not_applicable')continue;
+    summary.products++;summary[state]++;
+    if(state!=='recent')summary.due++;
+  }
+  return summary;
+}
 /* Pure browser-local watchlist browsing; never changes stored items or their indices. */
-function browseItems(items,query='',filter='all',sort='recent'){
+function browseItems(items,query='',filter='all',sort='recent',now=Date.now()){
   const term=String(query??'').trim().toLocaleLowerCase().slice(0,140);
   const entries=(Array.isArray(items)?items:[]).map((item,index)=>({item,index})).filter(({item})=>{
     if(!validItem(item))return false;
@@ -148,10 +167,21 @@ function browseItems(items,query='',filter='all',sort='recent'){
       case 'reached':return tracked&&amount!==null&&amount<=target;
       case 'out_of_stock':return item.inStock===false;
       case 'unchecked':return !item.lastChecked;
+      case 'due':return ['never','stale'].includes(checkFreshness(item,now));
       default:return true;
     }
   });
-  if(sort==='name')entries.sort((a,b)=>a.item.title.localeCompare(b.item.title)||a.index-b.index);
+  if(sort==='check-oldest'){
+    const rank={never:0,stale:1,recent:2,not_applicable:3};
+    entries.sort((a,b)=>{
+      const sa=checkFreshness(a.item,now),sb=checkFreshness(b.item,now);
+      const group=rank[sa]-rank[sb];
+      if(group)return group;
+      if(sa==='stale'||sa==='recent')return Date.parse(a.item.lastChecked)-Date.parse(b.item.lastChecked)||a.index-b.index;
+      return a.index-b.index;
+    });
+  }
+  else if(sort==='name')entries.sort((a,b)=>a.item.title.localeCompare(b.item.title)||a.index-b.index);
   else if(sort==='price-low'||sort==='price-high'){
     const direction=sort==='price-low'?1:-1;
     entries.sort((a,b)=>{
@@ -244,5 +274,5 @@ function browseAlerts(items,query='',type='all'){
   return mergeAlerts([],items).filter(x=>(type==='all'||x.type===type)&&(!term||x.title.toLocaleLowerCase().includes(term)||x.type.replace(/_/g,' ').includes(term)));
 }
 
-return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseOffers,webDomain,browseWebResults,browseItems,validAlert,mergeAlerts,loadAlerts,recordAlerts,csvCell,historyCsv,alertsCsv,browseAlerts};
+return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseOffers,webDomain,browseWebResults,browseItems,checkFreshness,reviewSummary,validAlert,mergeAlerts,loadAlerts,recordAlerts,csvCell,historyCsv,alertsCsv,browseAlerts};
 });
