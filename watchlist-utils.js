@@ -107,6 +107,33 @@ function browseOffers(items,options={}){
   return filtered;
 }
 
+/* Browser-only filtering of results already returned by website search.
+   Derive domains from validated destination URLs, never provider display labels. */
+function webDomain(raw){
+  const url=safeUrl(raw);
+  if(!url)return null;
+  try{return new URL(url).hostname.toLowerCase().replace(/^www\./,'')}catch{return null}
+}
+function browseWebResults(items,options={}){
+  const term=String(options.query??'').trim().toLocaleLowerCase().slice(0,140);
+  const selected=String(options.domain??'').trim().toLowerCase();
+  const sort=options.sort||'relevance',seen=new Set(),results=[];
+  for(const item of Array.isArray(items)?items:[]){
+    if(!item||typeof item!=='object'||typeof item.title!=='string'||!item.title.trim())continue;
+    const url=safeUrl(item.url),domain=webDomain(item.url);
+    if(!url||!domain||seen.has(url))continue;
+    seen.add(url);
+    const title=item.title.trim().slice(0,250);
+    const snippet=typeof item.snippet==='string'?item.snippet.slice(0,400):'';
+    if(selected&&domain!==selected)continue;
+    if(term&&![title,snippet,domain].some(value=>value.toLocaleLowerCase().includes(term)))continue;
+    results.push({title,url,domain,snippet});
+  }
+  if(sort==='title')results.sort((a,b)=>a.title.localeCompare(b.title));
+  else if(sort==='domain')results.sort((a,b)=>a.domain.localeCompare(b.domain)||a.title.localeCompare(b.title));
+  return results.slice(0,30);
+}
+
 /* Pure browser-local watchlist browsing; never changes stored items or their indices. */
 function browseItems(items,query='',filter='all',sort='recent'){
   const term=String(query??'').trim().toLocaleLowerCase().slice(0,140);
@@ -217,5 +244,5 @@ function browseAlerts(items,query='',type='all'){
   return mergeAlerts([],items).filter(x=>(type==='all'||x.type===type)&&(!term||x.title.toLocaleLowerCase().includes(term)||x.type.replace(/_/g,' ').includes(term)));
 }
 
-return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseOffers,browseItems,validAlert,mergeAlerts,loadAlerts,recordAlerts,csvCell,historyCsv,alertsCsv,browseAlerts};
+return {WATCH_KEY,HISTORY_KEY,ALERTS_KEY,price,currencyOf,matchingCurrency,safeUrl,validItem,loadItems,keyFor,loadHistory,observe,mergeItems,mergeHistory,historyStats,sparklinePoints,priceRanges,browseOffers,webDomain,browseWebResults,browseItems,validAlert,mergeAlerts,loadAlerts,recordAlerts,csvCell,historyCsv,alertsCsv,browseAlerts};
 });
